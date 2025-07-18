@@ -1,0 +1,122 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '2.1.21'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'org.openapi.generator' version '6.6.0'
+    id 'de.undercouch.download' version '5.4.0'
+}
+
+group = 'com.benlukka'
+version = '1.0-SNAPSHOT'
+def openApiSpecUrl = "http://localhost:9000/appApi.json"
+def outputFilePath = "src/main/resources/openapi.json"
+def outputFile = file(outputFilePath)
+
+repositories {
+    mavenCentral()
+}
+def http4kVersion = "5.47.0.0"
+def jooqVersion = "3.18.6"
+dependencies {
+    testImplementation 'org.jetbrains.kotlin:kotlin-test'
+    implementation("org.jmdns:jmdns:3.5.7")
+    implementation("org.http4k:http4k-client-okhttp:${http4kVersion}")
+    implementation("org.http4k:http4k-client-fuel:${http4kVersion}")
+    implementation("org.http4k:http4k-client-websocket:${http4kVersion}")
+    implementation("org.http4k:http4k-core:${http4kVersion}")
+    implementation("org.http4k:http4k-format-jackson:${http4kVersion}")
+    implementation("org.http4k:http4k-contract:${http4kVersion}")
+    implementation("org.http4k:http4k-multipart:${http4kVersion}")
+    implementation("org.http4k:http4k-server-undertow:${http4kVersion}")
+    implementation("org.http4k:http4k-template-handlebars:${http4kVersion}")
+    implementation("org.http4k:http4k-server-jetty:${http4kVersion}")
+    implementation("org.http4k:http4k-client-websocket:${http4kVersion}")
+    implementation("org.http4k:http4k-opentelemetry:${http4kVersion}")
+
+    // jOOQ dependencies
+    implementation("org.jooq:jooq:${jooqVersion}")
+    implementation("org.jooq:jooq-meta:${jooqVersion}")
+    implementation("org.jooq:jooq-codegen:${jooqVersion}")
+
+    // PostgreSQL JDBC driver
+    implementation("org.postgresql:postgresql:42.6.0")
+}
+
+test {
+    useJUnitPlatform()
+}
+kotlin {
+    jvmToolchain(23)
+}
+
+application {
+    mainClass = 'com.benlukka.MainKt'
+}
+task downloadOpenApiSpec(type: Download) {
+    description "Downloads the OpenAPI specification from the running application."
+    group "build"
+
+    src openApiSpecUrl // Source URL to download from
+    dest outputFile    // Destination file
+
+    // Optional: Only download if the remote file is newer or different
+    overwrite false // Set to true to always overwrite
+    onlyIfNewer true // Only download if the remote file is newer than the local one
+    // Optional: Make the task fail if the download fails (default is true for the Download task)
+    // failOnError true
+
+    // Ensure the parent directory exists before downloading
+    doFirst {
+        if (!outputFile.parentFile.exists()) {
+            outputFile.parentFile.mkdirs()
+        }
+    }
+}
+// Shadow JAR configuration
+shadowJar {
+    archiveBaseName.set('TempMon')
+    archiveClassifier.set('')
+    archiveVersion.set(version)
+    mergeServiceFiles()
+    manifest {
+        attributes 'Main-Class': application.mainClass
+    }
+}
+
+// Fix dependency issues between tasks
+tasks.distZip.dependsOn tasks.shadowJar
+tasks.distTar.dependsOn tasks.shadowJar
+tasks.startScripts.dependsOn tasks.shadowJar
+
+// OpenAPI client generation
+openApiGenerate {
+    generatorName = "typescript-fetch"
+    inputSpec = "$projectDir/src/main/resources/openapi.json"
+    outputDir = "$projectDir/frontend/src/generated"
+    validateSpec = false
+
+    typeMappings = [
+            DateTime: "string",
+            Date: "string"
+    ]
+
+    configOptions = [
+            supportsES6: "true",
+            enumPropertyNaming: "UPPERCASE",
+            modelPropertyNaming: "original",
+            useSingleRequestParameter: "true",
+            withInterfaces: "true",
+            includeUnreferencedSchemas: "true"
+    ]
+}
+
+
+// Create directory for OpenAPI spec if it doesn't exist
+task createOpenApiDirectory {
+    doLast {
+        mkdir("$projectDir/src/main/resources")
+    }
+}
+
+// Make downloadOpenApiSpec depend on createOpenApiDirectory
+downloadOpenApiSpec.dependsOn createOpenApiDirectory

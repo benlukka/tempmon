@@ -1,0 +1,53 @@
+services:
+  # PostgreSQL database service
+  postgres:
+    image: postgres:16
+    container_name: tempmon-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: TempMon
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # TempMon application service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tempmon-app:latest
+    container_name: tempmon-app
+    ports:
+      - "9000:9000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Frontend service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: tempmon-frontend:latest
+    container_name: tempmon-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - app
+    restart: unless-stopped
+    environment:
+      - REACT_APP_API_URL=http://localhost:9000
+
+volumes:
+  # Persistent volume for PostgreSQL data
+  postgres-data:
+    driver: local
