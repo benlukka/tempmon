@@ -1,0 +1,8 @@
+apis/DefaultApi.ts
+apis/index.ts
+index.ts
+models/Device.ts
+models/Measurement.ts
+models/TemperatureHumidityRequest.ts
+models/index.ts
+runtime.ts

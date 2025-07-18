@@ -1,0 +1,7 @@
+.dashboard{
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    background-color: #f0f0f0;
+    gap: 1rem;
+}

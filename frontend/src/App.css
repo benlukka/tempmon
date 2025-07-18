@@ -1,0 +1,207 @@
+/* General App Styling */
+.App {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Header Styling */
+.App-header {
+  background-color: #1e88e5;
+  color: white;
+  padding: 1rem;
+  margin-bottom: 2rem;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.App-header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+/* Main Content Styling */
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+/* Latest Measurements Component Styling */
+.latest-measurements {
+  background-color: #f5f5f5;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.latest-measurements h2 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 2px solid #1e88e5;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.device-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.device-card {
+  background-color: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+}
+
+.device-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.device-card h3 {
+  margin-top: 0;
+  color: #1e88e5;
+}
+
+.timestamp {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.measurements {
+  margin-bottom: 1rem;
+}
+
+.measurement {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.temperature {
+  background-color: #e3f2fd;
+}
+
+.humidity {
+  background-color: #e8f5e9;
+}
+
+.device-info {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 1rem;
+  border-top: 1px solid #eee;
+  padding-top: 0.5rem;
+}
+
+.device-info p {
+  margin: 0.2rem 0;
+}
+
+/* Measurement List Component Styling */
+.measurement-list {
+  background-color: #f5f5f5;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.measurement-list h2 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 2px solid #1e88e5;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.measurement-list table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.measurement-list th, .measurement-list td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.measurement-list th {
+  background-color: #1e88e5;
+  color: white;
+  font-weight: 500;
+}
+
+.measurement-list tr:last-child td {
+  border-bottom: none;
+}
+
+.measurement-list tr:hover td {
+  background-color: #f9f9f9;
+}
+
+/* Loading and Error States */
+.loading, .error {
+  padding: 2rem;
+  text-align: center;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.error {
+  color: #d32f2f;
+}
+
+/* Measurement Chart Component Styling */
+.measurement-chart {
+  background-color: #f5f5f5;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.measurement-chart h2 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 2px solid #1e88e5;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.chart-container {
+  background-color: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+}
+
+.chart-container svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+/* Footer Styling */
+footer {
+  text-align: center;
+  padding: 1rem;
+  color: #666;
+  font-size: 0.9rem;
+  border-top: 1px solid #eee;
+  margin-top: 2rem;
+}
