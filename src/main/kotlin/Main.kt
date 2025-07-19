@@ -4,7 +4,7 @@ import JooqProvider
 import com.benlukka.codiac.RequestApplication
 import org.http4k.server.Jetty
 import org.http4k.server.asServer
-val port = 9000
+val port = System.getenv()["API_PORT"] ?: 9000
 fun main() {
     Thread {
         try {
@@ -19,7 +19,7 @@ fun main() {
     Thread{
         try {
             println("Starting HTTP server...")
-            RequestApplication().app.asServer(Jetty(port)).start()
+            RequestApplication().app.asServer(Jetty(port as Int)).start()
             println("Server started on port $port")
         } catch (e: Exception) {
             println("Error starting HTTP server: ${e.message}")

@@ -18,9 +18,9 @@ class JooqProvider {
     companion object {
         private const val JDBC_URL = "jdbc:postgresql://localhost:5432/"
         private const val JDBC_URL_WITH_DB = "jdbc:postgresql://localhost:5432/TempMon"
-        private const val USERNAME = "postgres"
-        private const val PASSWORD = "postgres"
-        private const val DB_NAME = "TempMon"
+        private val USERNAME = System.getenv()["POSTGRES_USER"] ?: "postgres"
+        private val PASSWORD = System.getenv()["POSTGRES_PASSWORD"] ?: "postgres"
+        private val DB_NAME = System.getenv()["POSTGRES_DB"] ?: "TempMon"
 
         // SQL to create the measurements table if it doesn't exist
         private const val CREATE_TABLE_SQL = """
