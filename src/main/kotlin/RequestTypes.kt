@@ -31,8 +31,8 @@ interface Request {
 
 data class TemperatureHumidityRequest(
     override val type: String = "TEMPERATURE_HUMIDITY",
-    val temperature: Int? = null,
-    val humidity: Int? = null
+    val temperature: Double? = null,
+    val humidity: Double? = null
 ) : Request
 
 /**
@@ -42,7 +42,7 @@ data class TemperatureHumidityRequest(
 data class HumidityRequest(
     // The 'type' discriminator, matching the name defined in @JsonSubTypes for this class
     override val type: String = "HUMIDITY",
-    val humidity: Int? = null
+    val humidity: Double? = null
 ) : Request
 
 /**
@@ -51,5 +51,5 @@ data class HumidityRequest(
  */
 data class TemperatureRequest(
     override val type: String = "TEMPERATURE",
-    val temperature: Int? = null
+    val temperature: Double? = null
 ) : Request

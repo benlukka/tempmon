@@ -3,15 +3,11 @@ package com.benlukka.codiac
 import JooqProvider
 import RequestBodyLenses.request
 
-import org.http4k.core.HttpHandler
 import org.http4k.core.Method.POST
 import org.http4k.core.Method.GET
 import org.http4k.core.Request as HttpRequest // Alias org.http4k.core.Request to HttpRequest
-import org.http4k.core.Response
 import org.http4k.core.Status.Companion.BAD_REQUEST
 import org.http4k.core.Status.Companion.OK
-import org.http4k.core.Uri
-import org.http4k.core.Body
 import org.http4k.routing.ResourceLoader.Companion.Classpath
 import org.http4k.routing.RoutingHttpHandler
 import org.http4k.routing.bind
@@ -29,6 +25,7 @@ import org.http4k.contract.contract
 import org.http4k.contract.openapi.ApiInfo
 import org.http4k.contract.openapi.v3.ApiServer
 import org.http4k.contract.openapi.v3.OpenApi3
+import org.http4k.core.*
 import org.http4k.lens.Query
 import org.http4k.lens.string
 import org.http4k.lens.int
@@ -37,7 +34,6 @@ import org.http4k.routing.singlePageApp
 class RequestApplication {
 
     private val jooqProvider = JooqProvider()
-
     init {
         // Initialize the database when the application starts
         jooqProvider.initializeDatabase()
@@ -52,13 +48,11 @@ class RequestApplication {
             .header("Access-Control-Allow-Credentials", "true")
     }
 
-    private val handleRequest: HttpHandler = { httpRequest: HttpRequest -> // Use HttpRequest alias for clarity
+    private val handleRequest: HttpHandler = { httpRequest: HttpRequest ->
         try {
-            // Extract the polymorphic Request object from the request body using the 'request' lens
             val myRequest: Request = request(httpRequest)
 
-            // Extract client information from the request
-            val ipAddress = httpRequest.header("X-Forwarded-For") ?: httpRequest.header("Remote-Addr") ?: "unknown"
+            val ipAddress = httpRequest.source?.address ?: "unknown"
             val macAddress = httpRequest.header("X-MAC-Address")
             val deviceName = httpRequest.header("X-Device-Name")
 
@@ -66,7 +60,8 @@ class RequestApplication {
             val responseMessage = when (myRequest) {
                 is TemperatureHumidityRequest -> {
                     jooqProvider.saveMeasurement(
-                        temperature = myRequest.temperature?.toFloat(),
+                        temperature = myRequest.temperature,
+                        humidity = myRequest.humidity,
                         ipAddress = ipAddress,
                         macAddress = macAddress,
                         deviceName = deviceName
@@ -74,9 +69,8 @@ class RequestApplication {
                     "Received TemperatureHumidityRequest: Temp=${myRequest.temperature}, Humidity=${myRequest.humidity}"
                 }
                 is HumidityRequest -> {
-                    // Save only humidity
                     jooqProvider.saveMeasurement(
-                        humidity = myRequest.humidity?.toFloat(),
+                        humidity = myRequest.humidity,
                         ipAddress = ipAddress,
                         macAddress = macAddress,
                         deviceName = deviceName
@@ -84,9 +78,8 @@ class RequestApplication {
                     "Received HumidityRequest: Humidity=${myRequest.humidity}"
                 }
                 is TemperatureRequest -> {
-                    // Save only temperature
                     jooqProvider.saveMeasurement(
-                        temperature = myRequest.temperature?.toFloat(),
+                        temperature = myRequest.temperature,
                         ipAddress = ipAddress,
                         macAddress = macAddress,
                         deviceName = deviceName
@@ -107,7 +100,6 @@ class RequestApplication {
         }
     }
 
-    // Handler for getting all measurements with pagination
     private val handleGetAllMeasurements: HttpHandler = { httpRequest ->
         try {
             val limit = httpRequest.query("limit")?.toIntOrNull() ?: 100
@@ -144,6 +136,24 @@ class RequestApplication {
                 .withCorsHeaders()
         }
     }
+    private val handleGetAllMeasurementsForRoom: HttpHandler = { httpRequest ->
+        try {
+            val limit = httpRequest.query("limit")?.toIntOrNull() ?: 100
+            val offset = httpRequest.query("offset")?.toIntOrNull() ?: 0
+            val room = httpRequest.query("room") ?: throw IllegalArgumentException("Missing room parameter")
+            val measurements = jooqProvider.getMeasurementsByRoom(room, limit, offset)
+
+            Response(OK)
+                .header("Content-Type", "application/json")
+                .with(measurementsListBodyLens of measurements)
+                .withCorsHeaders()
+        } catch (e: Exception) {
+            Response(BAD_REQUEST)
+                .header("Content-Type", "text/plain")
+                .body("Error retrieving measurements for room: ${e.message}")
+                .withCorsHeaders()
+        }
+    }
     private val handleGetAllDevices: HttpHandler = { httpRequest ->
         try {
             val limit = httpRequest.query("limit")?.toIntOrNull() ?: 100
@@ -158,16 +168,15 @@ class RequestApplication {
         } catch (e: Exception) {
             Response(BAD_REQUEST)
                 .header("Content-Type", "text/plain")
-                .body("Error retrieving measurements: ${e.message}")
+                .body("Error retrieving devices: ${e.message}")
                 .withCorsHeaders()
         }
     }
+    private val formatter = DateTimeFormatter.ISO_DATE_TIME
 
     // Handler for getting measurements in a time range
     private val handleGetMeasurementsInTimeRange: HttpHandler = { httpRequest ->
         try {
-            val formatter = DateTimeFormatter.ISO_DATE_TIME
-
             val startTimeStr = httpRequest.query("startTime")
             val endTimeStr = httpRequest.query("endTime")
 
@@ -193,7 +202,6 @@ class RequestApplication {
 
     private val handleGetAverageTemperatureInTimeRange: HttpHandler = { httpRequest ->
         try {
-            val formatter = DateTimeFormatter.ISO_DATE_TIME
 
             val startTimeStr = httpRequest.query("startTime")
             val endTimeStr = httpRequest.query("endTime")
@@ -221,7 +229,6 @@ class RequestApplication {
     }
     private val handleGetAverageHumidityInTimeRange: HttpHandler = { httpRequest ->
         try {
-            val formatter = DateTimeFormatter.ISO_DATE_TIME
 
             val startTimeStr = httpRequest.query("startTime")
             val endTimeStr = httpRequest.query("endTime")
@@ -263,8 +270,23 @@ class RequestApplication {
                 .withCorsHeaders()
         }
     }
+    private val roomLens = Body.auto<List<JooqProvider.Room>>().toLens()
 
-    // Handler for serving the OpenAPI spec
+    private val handleGetRooms: HttpHandler = { _ ->
+        try {
+            val rooms = jooqProvider.getAllRooms()
+            Response(OK)
+                .header("Content-Type", "application/json")
+                .with(roomLens of rooms)
+                .withCorsHeaders()
+        } catch (e: Exception) {
+            Response(BAD_REQUEST)
+                .header("Content-Type", "text/plain")
+                .body("Error retrieving rooms by device: ${e.message}")
+                .withCorsHeaders()
+        }
+    }
+
     private val handleOpenApiSpec: HttpHandler = {
         Response(OK)
             .header("Content-Type", "application/json")
@@ -272,12 +294,9 @@ class RequestApplication {
             .withCorsHeaders()
     }
 
-    // Define response body lens for Measurement list
     private val measurementsListBodyLens = Body.auto<List<JooqProvider.Measurement>>().toLens()
-    // Define response body lens for Device list
     private val devicesListBodyLens = Body.auto<List<JooqProvider.Device>>().toLens()
 
-    // Example placeholder data for the lenses
     private val measurementsExample = listOf(
         JooqProvider.Measurement(
             id = 1,
@@ -289,6 +308,7 @@ class RequestApplication {
             deviceName = "Sensor1"
         )
     )
+
     private val devicesExample = listOf(
         JooqProvider.Device(
             macAddress = "00:11:22:33:44:55",
@@ -296,6 +316,14 @@ class RequestApplication {
         )
     )
 
+    private val roomsExample = listOf(
+        JooqProvider.Room(
+            name = "11b",
+            devices = listOf(
+                JooqProvider.Device(macAddress = "00:11:22:33:44:55", name = "11b Room Sensor")
+            )
+        )
+    )
 
     private val measurementsRoute = "/measurements" meta {
         summary = "Get all measurements"
@@ -303,7 +331,6 @@ class RequestApplication {
         operationId = "getAllMeasurements"
         queries += Query.int().optional("limit", "Maximum number of measurements to retrieve (default: 100)")
         queries += Query.int().optional("offset", "Offset to start retrieving measurements from (default: 0)")
-        // Corrected returning syntax with example:
         returning(OK, measurementsListBodyLens to measurementsExample, "Successful response with measurements")
         returning(BAD_REQUEST to "Error retrieving measurements")
     } bindContract GET to handleGetAllMeasurements
@@ -315,7 +342,6 @@ class RequestApplication {
         queries += Query.int().optional("limit", "Maximum number of measurements to retrieve (default: 100)")
         queries += Query.int().optional("offset", "Offset to start retrieving measurements from (default: 0)")
         queries += Query.string().required("deviceMac", "MAC address of the device to filter measurements by")
-        // Corrected returning syntax with example:
         returning(OK, measurementsListBodyLens to measurementsExample, "Successful response with measurements")
         returning(BAD_REQUEST to "Error retrieving measurements")
     } bindContract GET to handleGetAllMeasurementsForDevice
@@ -326,7 +352,6 @@ class RequestApplication {
         operationId = "getAllDevices"
         queries += Query.int().optional("limit", "Maximum number of measurements to retrieve (default: 100)")
         queries += Query.int().optional("offset", "Offset to start retrieving measurements from (default: 0)")
-        // Corrected returning syntax with example:
         returning(OK, devicesListBodyLens to devicesExample, "Successful response with devices")
         returning(BAD_REQUEST to "Error retrieving devices")
     } bindContract GET to handleGetAllDevices
@@ -337,7 +362,6 @@ class RequestApplication {
         operationId = "getMeasurementsInTimeRange"
         queries += Query.string().optional("startTime", "Start time in ISO format (default: 24 hours ago)")
         queries += Query.string().optional("endTime", "End time in ISO format (default: now)")
-        // Corrected returning syntax with example:
         returning(OK, measurementsListBodyLens to measurementsExample, "Successful response with measurements in time range")
         returning(BAD_REQUEST to "Error retrieving measurements in time range")
     } bindContract GET to handleGetMeasurementsInTimeRange
@@ -348,7 +372,6 @@ class RequestApplication {
         operationId = "getAvgTemperatureInTimeRange"
         queries += Query.string().optional("startTime", "Start time in ISO format (default: 24 hours ago)")
         queries += Query.string().optional("endTime", "End time in ISO format (default: now)")
-        // Use the new averageValueBodyLens with a Float example
         returning(OK, averageValueBodyLens to 25.5f, "Successful response with average temperature")
         returning(BAD_REQUEST to "Error retrieving average temperature in time range")
     } bindContract GET to handleGetAverageTemperatureInTimeRange
@@ -359,7 +382,6 @@ class RequestApplication {
         operationId = "getAvgHumidityInTimeRange"
         queries += Query.string().optional("startTime", "Start time in ISO format (default: 24 hours ago)")
         queries += Query.string().optional("endTime", "End time in ISO format (default: now)")
-        // Use the new averageValueBodyLens with a Float example
         returning(OK, averageValueBodyLens to 60.2f, "Successful response with average humidity")
         returning(BAD_REQUEST to "Error retrieving average humidity in time range")
     } bindContract GET to handleGetAverageHumidityInTimeRange
@@ -368,20 +390,37 @@ class RequestApplication {
         summary = "Get latest measurements by device"
         description = "Retrieves the latest measurement for each device"
         operationId = "getLatestMeasurementsByDevice"
-        // Corrected returning syntax with example:
         returning(OK, measurementsListBodyLens to measurementsExample, "Successful response with latest measurements by device")
         returning(BAD_REQUEST to "Error retrieving latest measurements by device")
     } bindContract GET to handleGetLatestMeasurementsByDevice
+
+    private val measurementsRoomRoute = "/rooms/measurements" meta {
+        summary = "Get latest measurements by device"
+        description = "Retrieves measurement for the given room"
+        operationId = "getMeasurementsForRoom"
+        queries += Query.string().optional("room", "the room name to filter measurements by")
+        queries += Query.string().optional("startTime", "Start time in ISO format")
+        queries += Query.string().optional("endTime", "End time in ISO format (default: now)")
+        returning(OK, measurementsListBodyLens to measurementsExample, "Successful response with measurements for room")
+        returning(BAD_REQUEST to "Error retrieving measurements for room")
+    } bindContract GET to handleGetAllMeasurementsForRoom
+
+    private val roomRoute = "/rooms" meta {
+        summary = "Get all rooms and their associated devices"
+        description = "Retrieves all rooms from the database, including their associated devices"
+        operationId = "getAllRooms"
+        returning(OK, roomLens to roomsExample, "Successful response with all rooms")
+        returning(BAD_REQUEST to "Error retrieving all rooms")
+    } bindContract GET to handleGetRooms
 
     private val requestRoute = "/request" meta {
         summary = "Submit measurement data"
         description = "Submit temperature and/or humidity data from a device"
         operationId = "submitMeasurementData"
-        // The `receiving` function still uses the lens directly with an example
         receiving(request to TemperatureHumidityRequest(
             type = "TEMPERATURE_HUMIDITY",
-            temperature = 25,
-            humidity = 60
+            temperature = 25.0,
+            humidity = 60.0
         ))
         returning(OK to "Successful submission")
         returning(BAD_REQUEST to "Invalid request body")
@@ -402,6 +441,8 @@ class RequestApplication {
                 latestMeasurementsRoute,
                 requestRoute,
                 devicesRoute,
+                measurementsRoomRoute,
+                roomRoute,
             )
         },
         "/appApi.json" bind GET to handleOpenApiSpec,

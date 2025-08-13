@@ -57,7 +57,7 @@ object MdnsAdvertiser: Thread() {
             val jmdns = JmDNS.create(addr)
             val serviceType = "_http._tcp.local."
             val serviceName = "TempMon"
-            val servicePort = port // Make sure 'port' is defined somewhere
+            val servicePort = port as Int
 
             val txtRecord = mapOf(
                 "version" to "1.0",

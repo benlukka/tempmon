@@ -4,6 +4,7 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '8.1.1'
     id 'org.openapi.generator' version '6.6.0'
     id 'de.undercouch.download' version '5.4.0'
+    id "nu.studer.jooq" version "10.1.1"
 }
 
 group = 'com.benlukka'
@@ -16,7 +17,7 @@ repositories {
     mavenCentral()
 }
 def http4kVersion = "5.47.0.0"
-def jooqVersion = "3.18.6"
+def jooqVersion = "3.20.5"
 dependencies {
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
     implementation("org.jmdns:jmdns:3.5.7")
@@ -37,9 +38,10 @@ dependencies {
     implementation("org.jooq:jooq:${jooqVersion}")
     implementation("org.jooq:jooq-meta:${jooqVersion}")
     implementation("org.jooq:jooq-codegen:${jooqVersion}")
+    jooqGenerator "org.postgresql:postgresql:42.7.7"
 
     // PostgreSQL JDBC driver
-    implementation("org.postgresql:postgresql:42.6.0")
+    implementation("org.postgresql:postgresql:42.7.7")
 }
 
 test {
@@ -109,8 +111,43 @@ openApiGenerate {
             includeUnreferencedSchemas: "true"
     ]
 }
+ def USERNAME = System.getenv()["POSTGRES_USER"] ?: "postgres"
+ def PASSWORD = System.getenv()["POSTGRES_PASSWORD"] ?: "postgres"
+ def DB_NAME = System.getenv()["POSTGRES_DB"] ?: "TempMon"
 
-
+jooq {
+    version = jooqVersion
+    configurations {
+        main {
+            generationTool {
+                jdbc {
+                    driver = "org.postgresql.Driver"
+                    url = "jdbc:postgresql://localhost:5432/TempMon"
+                    user = USERNAME
+                    password = PASSWORD
+                }
+                generator {
+                    name = "org.jooq.codegen.KotlinGenerator"
+                    database {
+                        name = "org.jooq.meta.postgres.PostgresDatabase"
+                        inputSchema = "public"
+                    }
+                    target {
+                        packageName = "com.benlukka.jooq"
+                        directory = "src/generated/jooqDatabase"
+                    }
+                    generate {
+                        records = true
+                        immutablePojos = true
+                        fluentSetters = true
+                        deprecated = false
+                        pojosAsKotlinDataClasses = true
+                    }
+                }
+            }
+        }
+    }
+}
 // Create directory for OpenAPI spec if it doesn't exist
 task createOpenApiDirectory {
     doLast {
