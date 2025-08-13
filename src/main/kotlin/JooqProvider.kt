@@ -1,12 +1,10 @@
+import com.benlukka.jooq.tables.references.MEASUREMENTS
 import org.jooq.*
 import org.jooq.impl.DSL
-import org.jooq.impl.DSL.field
-import org.jooq.impl.DSL.rowNumber
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLException
 import java.sql.Statement
-import java.sql.Timestamp
 import java.time.LocalDateTime
 
 /**
@@ -160,31 +158,31 @@ class JooqProvider {
      * @return The ID of the inserted record
      */
     fun saveMeasurement(
-        temperature: Float? = null,
-        humidity: Float? = null,
+        temperature: Double? = null,
+        humidity: Double? = null,
         ipAddress: String? = null,
         macAddress: String? = null,
         deviceName: String? = null
     ): Int {
         return withDslContext { dsl ->
             dsl.insertInto(
-                DSL.table("measurements"),
-                DSL.field("temperature"),
-                DSL.field("humidity"),
-                DSL.field("ip_address"),
-                DSL.field("mac_address"),
-                DSL.field("device_name")
+               MEASUREMENTS,
+                MEASUREMENTS.TEMPERATURE,
+                MEASUREMENTS.HUMIDITY,
+                MEASUREMENTS.IP_ADDRESS,
+                MEASUREMENTS.MAC_ADDRESS,
+                MEASUREMENTS.DEVICE_NAME,
             )
-            .values(
-                temperature,
-                humidity,
-                ipAddress,
-                macAddress,
-                deviceName
-            )
-            .returningResult(DSL.field("id", Int::class.java))
+                .values(
+                    temperature,
+                    humidity,
+                    ipAddress,
+                    macAddress,
+                    deviceName
+                )
+            .returningResult(MEASUREMENTS.ID)
             .fetchOne()
-            ?.getValue(DSL.field("id", Int::class.java)) ?: -1
+            ?.getValue(MEASUREMENTS.ID) ?: -1
         }
     }
 
@@ -205,6 +203,22 @@ class JooqProvider {
         val macAddress: String,
         val name: String
     )
+
+    data class Room(
+        val devices: List<Device>,
+        val name: String
+    )
+    private fun Record.toMeasurement(): Measurement {
+        return Measurement(
+            id = this.get(MEASUREMENTS.ID) ?: -1,
+            timestamp = this.get(MEASUREMENTS.TIMESTAMP) ?: LocalDateTime.now(),
+            temperature = this.get(MEASUREMENTS.TEMPERATURE)?.toFloat(),
+            humidity = this.get(MEASUREMENTS.HUMIDITY)?.toFloat(),
+            ipAddress = this.get(MEASUREMENTS.IP_ADDRESS),
+            macAddress = this.get(MEASUREMENTS.MAC_ADDRESS),
+            deviceName = this.get(MEASUREMENTS.DEVICE_NAME)
+        )
+    }
     /**
      * Retrieves all measurements from the database
      * 
@@ -215,59 +229,68 @@ class JooqProvider {
     fun getAllMeasurements(limit: Int = 100, offset: Int = 0): List<Measurement> {
         return withDslContext { dsl ->
             dsl.select()
-                .from(DSL.table("measurements"))
-                .orderBy(DSL.field("timestamp").desc())
+                .from(MEASUREMENTS)
+                .orderBy(MEASUREMENTS.TIMESTAMP.desc())
                 .limit(limit)
                 .offset(offset)
                 .fetch()
-                .map { record ->
-                    Measurement(
-                        id = record.get(DSL.field("id", Int::class.java)) ?: -1,
-                        timestamp = record.get(DSL.field("timestamp", Timestamp::class.java))?.toLocalDateTime() ?: LocalDateTime.now(),
-                        temperature = record.get(DSL.field("temperature", Double::class.java))?.toFloat(),
-                        humidity = record.get(DSL.field("humidity", Double::class.java))?.toFloat(),
-                        ipAddress = record.get(DSL.field("ip_address", String::class.java)),
-                        macAddress = record.get(DSL.field("mac_address", String::class.java)),
-                        deviceName = record.get(DSL.field("device_name", String::class.java))
-                    )
-                }
+                .let { records -> records.map { record -> record.toMeasurement()} }
         }
     }
     fun getMeasurementsByMacAddress(macAddress: String, limit: Int = 100, offset: Int = 0): List<Measurement> {
         return withDslContext { dsl ->
             dsl.select()
-                .from(DSL.table("measurements"))
-                .where(DSL.field("mac_address", String::class.java).eq(macAddress))
-                .orderBy(DSL.field("timestamp").desc())
+                .from(MEASUREMENTS)
+                .where(MEASUREMENTS.MAC_ADDRESS.eq(macAddress))
+                .orderBy(MEASUREMENTS.TIMESTAMP.desc())
                 .limit(limit)
                 .offset(offset)
                 .fetch()
-                .map { record ->
-                    Measurement(
-                        id = record.get(DSL.field("id", Int::class.java)) ?: -1,
-                        timestamp = record.get(DSL.field("timestamp", Timestamp::class.java))?.toLocalDateTime() ?: LocalDateTime.now(),
-                        temperature = record.get(DSL.field("temperature", Double::class.java))?.toFloat(),
-                        humidity = record.get(DSL.field("humidity", Double::class.java))?.toFloat(),
-                        ipAddress = record.get(DSL.field("ip_address", String::class.java)),
-                        macAddress = record.get(DSL.field("mac_address", String::class.java)),
-                        deviceName = record.get(DSL.field("device_name", String::class.java))
-                    )
-                }
+                .let { records -> records.map { record -> record.toMeasurement()} }
+        }
+    }
+    fun getMeasurementsByRoom(room: String, limit: Int = 100, offset: Int = 0): List<Measurement> {
+        return withDslContext { dsl ->
+            dsl.select()
+                .from(MEASUREMENTS)
+                .where(MEASUREMENTS.DEVICE_NAME.eq(room))
+                .orderBy(MEASUREMENTS.TIMESTAMP.desc())
+                .limit(limit)
+                .offset(offset)
+                .fetch()
+                .let { records -> records.map { record -> record.toMeasurement()} }
         }
     }
     fun getAllDevices(limit: Int = 100, offset: Int = 0): List<Device> {
         return withDslContext { dsl ->
-           dsl.selectDistinct()
-               .from(DSL.table("measurements"))
-               .limit(limit)
-               .offset(offset)
-               .fetch()
-               .map { record ->
-                   Device(
-                       macAddress = record.get(DSL.field("mac_address", String::class.java)),
-                       name = record.get(DSL.field("device_name", String::class.java))
-                   )
-               }
+            dsl.select(MEASUREMENTS.MAC_ADDRESS, MEASUREMENTS.DEVICE_NAME)
+                .from(MEASUREMENTS)
+                .groupBy(MEASUREMENTS.MAC_ADDRESS, MEASUREMENTS.DEVICE_NAME) // Or use distinct on
+                .orderBy(MEASUREMENTS.MAC_ADDRESS)
+                .limit(limit)
+                .offset(offset)
+                .fetch()
+                .map { record ->
+                    Device(
+                        macAddress = record.get(MEASUREMENTS.MAC_ADDRESS) ?: "",
+                        name = record.get(MEASUREMENTS.DEVICE_NAME) ?: ""
+                    )
+                }
+        }
+    }
+
+    fun getAllRooms(limit: Int = 100, offset: Int = 0): List<Room> {
+        return withDslContext { dsl ->
+            dsl.selectDistinct(MEASUREMENTS.DEVICE_NAME)
+                .from(MEASUREMENTS)
+                .limit(limit)
+                .offset(offset)
+                .fetch()
+                .map { record ->
+                    val deviceName = record.get(MEASUREMENTS.DEVICE_NAME) ?: "Unknown Room"
+                    val devices = getAllDevices().filter { it.name == deviceName }
+                    Room(devices = devices, name = deviceName)
+                }
         }
     }
     fun getAverageTemperature(
@@ -275,11 +298,11 @@ class JooqProvider {
         endTime: LocalDateTime = LocalDateTime.now()
     ): Float? {
         return withDslContext { dsl ->
-            val timestampField = field("timestamp", LocalDateTime::class.java) // Assuming 'timestamp' column
-            val temperatureField = field("temperature", Double::class.java)
+            val timestampField = MEASUREMENTS.TIMESTAMP // Assuming 'timestamp' column
+            val temperatureField = MEASUREMENTS.TEMPERATURE
 
             dsl.select(DSL.avg(temperatureField).`as`("avg_temp"))
-                .from(DSL.table("measurements"))
+                .from(MEASUREMENTS)
                 .where(timestampField.ge(startTime)) // Greater than or equal to start time
                 .and(timestampField.le(endTime))    // Less than or equal to end time
                 .fetchOne()
@@ -293,11 +316,11 @@ class JooqProvider {
         endTime: LocalDateTime = LocalDateTime.now()
     ): Float? {
         return withDslContext { dsl ->
-            val timestampField = field("timestamp", LocalDateTime::class.java) // Assuming 'timestamp' column
-            val humidityField = field("humidity", Double::class.java) // *** Corrected to humidity field ***
+            val timestampField = MEASUREMENTS.TIMESTAMP // Assuming 'timestamp' column
+            val humidityField = MEASUREMENTS.HUMIDITY // *** Corrected to humidity field ***
 
             dsl.select(DSL.avg(humidityField).`as`("avg_humidity")) // *** Corrected alias ***
-                .from(DSL.table("measurements"))
+                .from(MEASUREMENTS)
                 .where(timestampField.ge(startTime)) // Greater than or equal to start time
                 .and(timestampField.le(endTime))    // Less than or equal to end time
                 .fetchOne()
@@ -318,24 +341,14 @@ class JooqProvider {
     ): List<Measurement> {
         return withDslContext { dsl ->
             dsl.select()
-                .from(DSL.table("measurements"))
-                .where(DSL.field("timestamp").ge(Timestamp.valueOf(startTime)))
-                .and(DSL.field("timestamp").le(Timestamp.valueOf(endTime)))
-                .orderBy(DSL.field("timestamp").asc())
+                .from(MEASUREMENTS)
+                .where(MEASUREMENTS.TIMESTAMP.ge(startTime))
+                .and(MEASUREMENTS.TIMESTAMP.le(endTime))
+                .orderBy(MEASUREMENTS.TIMESTAMP.asc())
                 .fetch()
-                .map { record ->
-                    Measurement(
-                        id = record.get(DSL.field("id", Int::class.java)) ?: -1,
-                        timestamp = record.get(DSL.field("timestamp", Timestamp::class.java))?.toLocalDateTime() ?: LocalDateTime.now(),
-                        temperature = record.get(DSL.field("temperature", Double::class.java))?.toFloat(),
-                        humidity = record.get(DSL.field("humidity", Double::class.java))?.toFloat(),
-                        ipAddress = record.get(DSL.field("ip_address", String::class.java)),
-                        macAddress = record.get(DSL.field("mac_address", String::class.java)),
-                        deviceName = record.get(DSL.field("device_name", String::class.java))
-                    )
+                .let { records -> records.map { record -> record.toMeasurement()} }
                 }
         }
-    }
 
     /**
      * Retrieves the latest measurement for each device
@@ -346,33 +359,23 @@ class JooqProvider {
         return withDslContext { dsl ->
             // This query uses a subquery to get the latest timestamp for each device
             val subquery = dsl.select(
-                DSL.field("device_name"),
-                DSL.max(DSL.field("timestamp")).`as`("max_timestamp")
+                MEASUREMENTS.DEVICE_NAME,
+                DSL.max(MEASUREMENTS.TIMESTAMP).`as`("max_timestamp")
             )
-                .from(DSL.table("measurements"))
-                .where(DSL.field("device_name").isNotNull)
-                .groupBy(DSL.field("device_name"))
+                .from(MEASUREMENTS)
+                .where(MEASUREMENTS.DEVICE_NAME.isNotNull)
+                .groupBy(MEASUREMENTS.DEVICE_NAME)
                 .asTable("latest_timestamps")
 
             dsl.select()
-                .from(DSL.table("measurements"))
+                .from(MEASUREMENTS)
                 .join(subquery)
                 .on(
                     DSL.field("measurements.device_name").eq(DSL.field("latest_timestamps.device_name"))
                         .and(DSL.field("measurements.timestamp").eq(DSL.field("latest_timestamps.max_timestamp")))
                 )
                 .fetch()
-                .map { record ->
-                    Measurement(
-                        id = record.get(DSL.field("id", Int::class.java)) ?: -1,
-                        timestamp = record.get(DSL.field("timestamp", Timestamp::class.java))?.toLocalDateTime() ?: LocalDateTime.now(),
-                        temperature = record.get(DSL.field("temperature", Double::class.java))?.toFloat(),
-                        humidity = record.get(DSL.field("humidity", Double::class.java))?.toFloat(),
-                        ipAddress = record.get(DSL.field("ip_address", String::class.java)),
-                        macAddress = record.get(DSL.field("mac_address", String::class.java)),
-                        deviceName = record.get(DSL.field("device_name", String::class.java))
-                    )
-                }
+                .let { records -> records.map { record -> record.toMeasurement()} }
         }
     }
 }
