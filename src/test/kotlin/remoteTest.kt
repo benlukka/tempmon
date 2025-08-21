@@ -10,7 +10,6 @@ import org.http4k.core.Status.Companion.OK
 import org.http4k.server.Http4kServer
 import org.http4k.server.Jetty
 import org.http4k.server.asServer
-import com.benlukka.codiac.RequestApplication
 
 class RemoteTest {
     private lateinit var server: Http4kServer

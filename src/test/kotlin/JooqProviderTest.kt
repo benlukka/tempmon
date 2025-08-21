@@ -1,9 +1,6 @@
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.jooq.DSLContext
-import org.jooq.Record1
-import org.jooq.Result
 import org.jooq.impl.DSL
 import java.sql.Connection
 
@@ -46,7 +43,6 @@ class JooqProviderTest {
         val jooqProvider = JooqProvider()
 
         try {
-            // Test the withDslContext utility method
             val result = jooqProvider.withDslContext { dsl ->
                 println("[DEBUG_LOG] Executing query with withDslContext")
                 dsl.select(DSL.one()).fetch()
@@ -71,8 +67,8 @@ class JooqProviderTest {
 
             // Test saving a measurement with all fields
             val id = jooqProvider.saveMeasurement(
-                temperature = 22.5f,
-                humidity = 45.0f,
+                temperature = 22.5,
+                humidity = 45.0,
                 ipAddress = "192.168.1.1",
                 macAddress = "00:11:22:33:44:55",
                 deviceName = "Test Device"
