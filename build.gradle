@@ -54,15 +54,13 @@ kotlin {
 application {
     mainClass = 'com.benlukka.MainKt'
 }
-task downloadOpenApiSpec(type: Download) {
+tasks.register('downloadOpenApiSpec', Download) {
     description "Downloads the OpenAPI specification from the running application."
     group "build"
 
-    src openApiSpecUrl // Source URL to download from
-    dest outputFile    // Destination file
-
-    // Optional: Only download if the remote file is newer or different
-    overwrite false // Set to true to always overwrite
+    src openApiSpecUrl
+    dest outputFile
+    overwrite true
     onlyIfNewer true // Only download if the remote file is newer than the local one
     // Optional: Make the task fail if the download fails (default is true for the Download task)
     // failOnError true
@@ -113,7 +111,6 @@ openApiGenerate {
 }
  def USERNAME = System.getenv()["POSTGRES_USER"] ?: "postgres"
  def PASSWORD = System.getenv()["POSTGRES_PASSWORD"] ?: "postgres"
- def DB_NAME = System.getenv()["POSTGRES_DB"] ?: "TempMon"
 
 jooq {
     version = jooqVersion
@@ -148,12 +145,10 @@ jooq {
         }
     }
 }
-// Create directory for OpenAPI spec if it doesn't exist
-task createOpenApiDirectory {
+tasks.register('createOpenApiDirectory') {
     doLast {
         mkdir("$projectDir/src/main/resources")
     }
 }
 
-// Make downloadOpenApiSpec depend on createOpenApiDirectory
 downloadOpenApiSpec.dependsOn createOpenApiDirectory

@@ -1,5 +1,3 @@
-package com.benlukka
-
 import java.net.InetAddress
 import java.net.NetworkInterface
 import javax.jmdns.JmDNS
@@ -99,48 +97,4 @@ object MdnsAdvertiser: Thread() {
         }
     }
 
-    /**
-     * Alternative method to start advertising on a specific address
-     */
-    fun startOnAddress(address: InetAddress, servicePort: Int) {
-        try {
-            println("Advertising mDNS service on: ${address.hostAddress}")
-
-            val jmdns = JmDNS.create(address)
-            val serviceType = "_http._tcp.local."
-            val serviceName = "TempMon"
-
-            val txtRecord = mapOf(
-                "version" to "1.0",
-                "status" to "active"
-            )
-
-            val serviceInfo = ServiceInfo.create(
-                serviceType,
-                serviceName,
-                servicePort,
-                0,
-                0,
-                txtRecord
-            )
-
-            jmdns.registerService(serviceInfo)
-
-            println("TempMon mDNS-Dienst auf Port $servicePort veröffentlicht (${address.hostAddress})")
-
-            Runtime.getRuntime().addShutdownHook(Thread {
-                println("Beende TempMon-Dienst...")
-                try {
-                    jmdns.unregisterAllServices()
-                    jmdns.close()
-                } catch (e: Exception) {
-                    println("Error during shutdown: ${e.message}")
-                }
-            })
-
-        } catch (e: Exception) {
-            println("Error in MdnsAdvertiser: ${e.message}")
-            e.printStackTrace()
-        }
-    }
 }

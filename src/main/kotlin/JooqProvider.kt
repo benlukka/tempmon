@@ -6,7 +6,6 @@ import java.sql.DriverManager
 import java.sql.SQLException
 import java.sql.Statement
 import java.time.LocalDateTime
-
 /**
  * Provides a jOOQ DSLContext for database operations.
  * This implementation connects to a PostgreSQL database on localhost
@@ -112,16 +111,6 @@ class JooqProvider {
     }
 
     /**
-     * Creates a new DSLContext for jOOQ operations.
-     * The caller is responsible for closing the underlying connection when done.
-     * 
-     * @return A new DSLContext object
-     */
-    fun createDslContext(): DSLContext {
-        return DSL.using(createConnection(), SQLDialect.POSTGRES)
-    }
-
-    /**
      * Creates a new DSLContext for jOOQ operations using an existing connection.
      * 
      * @param connection An existing JDBC connection
@@ -139,11 +128,9 @@ class JooqProvider {
      */
     fun <T> withDslContext(block: (DSLContext) -> T): T {
         val connection = createConnection()
-        try {
+        connection.use { connection ->
             val dslContext = createDslContext(connection)
             return block(dslContext)
-        } finally {
-            connection.close()
         }
     }
 
@@ -235,6 +222,14 @@ class JooqProvider {
                 .offset(offset)
                 .fetch()
                 .let { records -> records.map { record -> record.toMeasurement()} }
+        }
+    }
+    fun getCountOfMeasurements(): Int {
+        return withDslContext { dsl ->
+            dsl.selectCount()
+                .from(MEASUREMENTS)
+                .fetchOne()
+                ?.value1() ?: 0
         }
     }
     fun getMeasurementsByMacAddress(macAddress: String, limit: Int = 100, offset: Int = 0): List<Measurement> {

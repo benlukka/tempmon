@@ -1,6 +1,3 @@
-package com.benlukka.codiac
-
-import JooqProvider
 import RequestBodyLenses.request
 
 import org.http4k.core.Method.POST
@@ -12,10 +9,6 @@ import org.http4k.routing.ResourceLoader.Companion.Classpath
 import org.http4k.routing.RoutingHttpHandler
 import org.http4k.routing.bind
 import org.http4k.routing.routes
-import com.benlukka.Request // Your base polymorphic Request class
-import com.benlukka.HumidityRequest
-import com.benlukka.TemperatureHumidityRequest
-import com.benlukka.TemperatureRequest
 import org.http4k.format.Jackson
 import org.http4k.format.Jackson.auto // This provides the Body.auto extension function
 import java.time.LocalDateTime
@@ -99,7 +92,11 @@ class RequestApplication {
                 .withCorsHeaders()
         }
     }
-
+    data class MeasurmentsWithCount(
+        val measurements: List<JooqProvider.Measurement>,
+        val count: Int
+    )
+    private val measurementsWithCountLens = Body.auto<MeasurmentsWithCount>().toLens()
     private val handleGetAllMeasurements: HttpHandler = { httpRequest ->
         try {
             val limit = httpRequest.query("limit")?.toIntOrNull() ?: 100
@@ -109,7 +106,11 @@ class RequestApplication {
 
             Response(OK)
                 .header("Content-Type", "application/json")
-                .body(Jackson.asFormatString(measurements))
+                .with(measurementsWithCountLens of MeasurmentsWithCount(
+                    measurements = measurements,
+                    count = jooqProvider.getCountOfMeasurements()
+                )
+                )
                 .withCorsHeaders()
         } catch (e: Exception) {
             Response(BAD_REQUEST)
@@ -308,6 +309,10 @@ class RequestApplication {
             deviceName = "Sensor1"
         )
     )
+    private val measurmentsWithCountExample = MeasurmentsWithCount(
+        measurements = measurementsExample,
+        count = 1
+    )
 
     private val devicesExample = listOf(
         JooqProvider.Device(
@@ -331,7 +336,7 @@ class RequestApplication {
         operationId = "getAllMeasurements"
         queries += Query.int().optional("limit", "Maximum number of measurements to retrieve (default: 100)")
         queries += Query.int().optional("offset", "Offset to start retrieving measurements from (default: 0)")
-        returning(OK, measurementsListBodyLens to measurementsExample, "Successful response with measurements")
+        returning(OK, measurementsWithCountLens to measurmentsWithCountExample, "Successful response with measurements")
         returning(BAD_REQUEST to "Error retrieving measurements")
     } bindContract GET to handleGetAllMeasurements
 
@@ -421,7 +426,8 @@ class RequestApplication {
             type = "TEMPERATURE_HUMIDITY",
             temperature = 25.0,
             humidity = 60.0
-        ))
+        )
+        )
         returning(OK to "Successful submission")
         returning(BAD_REQUEST to "Invalid request body")
     } bindContract POST to handleRequest

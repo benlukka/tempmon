@@ -32,7 +32,7 @@ class TempMonDatabaseTest {
                         .and(DSL.field("table_name").eq("measurements")))
                     .fetch()
 
-                assertTrue(result.isNotEmpty(), "Measurements table should exist")
+                assertTrue(result.isNotEmpty, "Measurements table should exist")
                 println("[DEBUG_LOG] Measurements table exists")
 
                 // Check the structure of the measurements table

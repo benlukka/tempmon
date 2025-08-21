@@ -17,6 +17,8 @@ import * as runtime from '../runtime';
 import type {
   Device,
   Measurement,
+  MeasurmentsWithCount,
+  Room,
   TemperatureHumidityRequest,
 } from '../models';
 import {
@@ -24,6 +26,10 @@ import {
     DeviceToJSON,
     MeasurementFromJSON,
     MeasurementToJSON,
+    MeasurmentsWithCountFromJSON,
+    MeasurmentsWithCountToJSON,
+    RoomFromJSON,
+    RoomToJSON,
     TemperatureHumidityRequestFromJSON,
     TemperatureHumidityRequestToJSON,
 } from '../models';
@@ -50,6 +56,12 @@ export interface GetAvgHumidityInTimeRangeRequest {
 }
 
 export interface GetAvgTemperatureInTimeRangeRequest {
+    startTime?: string;
+    endTime?: string;
+}
+
+export interface GetMeasurementsForRoomRequest {
+    room?: string;
     startTime?: string;
     endTime?: string;
 }
@@ -96,13 +108,13 @@ export interface DefaultApiInterface {
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    getAllMeasurementsRaw(requestParameters: GetAllMeasurementsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<Measurement>>>;
+    getAllMeasurementsRaw(requestParameters: GetAllMeasurementsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MeasurmentsWithCount>>;
 
     /**
      * Retrieves all measurements from the database with pagination
      * Get all measurements
      */
-    getAllMeasurements(requestParameters: GetAllMeasurementsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Measurement>>;
+    getAllMeasurements(requestParameters: GetAllMeasurementsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeasurmentsWithCount>;
 
     /**
      * Retrieves all measurements from the database with pagination for a specific device
@@ -121,6 +133,21 @@ export interface DefaultApiInterface {
      * Get all measurements by device
      */
     getAllMeasurementsForDevice(requestParameters: GetAllMeasurementsForDeviceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Measurement>>;
+
+    /**
+     * Retrieves all rooms from the database, including their associated devices
+     * @summary Get all rooms and their associated devices
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getAllRoomsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<Room>>>;
+
+    /**
+     * Retrieves all rooms from the database, including their associated devices
+     * Get all rooms and their associated devices
+     */
+    getAllRooms(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Room>>;
 
     /**
      * Retrieves average humidity from the database within a specified time range
@@ -170,6 +197,24 @@ export interface DefaultApiInterface {
      * Get latest measurements by device
      */
     getLatestMeasurementsByDevice(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Measurement>>;
+
+    /**
+     * Retrieves measurement for the given room
+     * @summary Get latest measurements by device
+     * @param {string} [room] the room name to filter measurements by
+     * @param {string} [startTime] Start time in ISO format
+     * @param {string} [endTime] End time in ISO format (default: now)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getMeasurementsForRoomRaw(requestParameters: GetMeasurementsForRoomRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<Measurement>>>;
+
+    /**
+     * Retrieves measurement for the given room
+     * Get latest measurements by device
+     */
+    getMeasurementsForRoom(requestParameters: GetMeasurementsForRoomRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Measurement>>;
 
     /**
      * Retrieves measurements from the database within a specified time range
@@ -251,7 +296,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      * Retrieves all measurements from the database with pagination
      * Get all measurements
      */
-    async getAllMeasurementsRaw(requestParameters: GetAllMeasurementsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<Measurement>>> {
+    async getAllMeasurementsRaw(requestParameters: GetAllMeasurementsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MeasurmentsWithCount>> {
         const queryParameters: any = {};
 
         if (requestParameters.limit !== undefined) {
@@ -271,14 +316,14 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(MeasurementFromJSON));
+        return new runtime.JSONApiResponse(response, (jsonValue) => MeasurmentsWithCountFromJSON(jsonValue));
     }
 
     /**
      * Retrieves all measurements from the database with pagination
      * Get all measurements
      */
-    async getAllMeasurements(requestParameters: GetAllMeasurementsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Measurement>> {
+    async getAllMeasurements(requestParameters: GetAllMeasurementsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeasurmentsWithCount> {
         const response = await this.getAllMeasurementsRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -324,6 +369,34 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getAllMeasurementsForDevice(requestParameters: GetAllMeasurementsForDeviceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Measurement>> {
         const response = await this.getAllMeasurementsForDeviceRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Retrieves all rooms from the database, including their associated devices
+     * Get all rooms and their associated devices
+     */
+    async getAllRoomsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<Room>>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/rooms`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(RoomFromJSON));
+    }
+
+    /**
+     * Retrieves all rooms from the database, including their associated devices
+     * Get all rooms and their associated devices
+     */
+    async getAllRooms(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Room>> {
+        const response = await this.getAllRoomsRaw(initOverrides);
         return await response.value();
     }
 
@@ -432,6 +505,46 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getLatestMeasurementsByDevice(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Measurement>> {
         const response = await this.getLatestMeasurementsByDeviceRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Retrieves measurement for the given room
+     * Get latest measurements by device
+     */
+    async getMeasurementsForRoomRaw(requestParameters: GetMeasurementsForRoomRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<Measurement>>> {
+        const queryParameters: any = {};
+
+        if (requestParameters.room !== undefined) {
+            queryParameters['room'] = requestParameters.room;
+        }
+
+        if (requestParameters.startTime !== undefined) {
+            queryParameters['startTime'] = requestParameters.startTime;
+        }
+
+        if (requestParameters.endTime !== undefined) {
+            queryParameters['endTime'] = requestParameters.endTime;
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/rooms/measurements`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(MeasurementFromJSON));
+    }
+
+    /**
+     * Retrieves measurement for the given room
+     * Get latest measurements by device
+     */
+    async getMeasurementsForRoom(requestParameters: GetMeasurementsForRoomRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Measurement>> {
+        const response = await this.getMeasurementsForRoomRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

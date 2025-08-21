@@ -1,7 +1,3 @@
-package com.benlukka
-
-import JooqProvider
-import com.benlukka.codiac.RequestApplication
 import org.http4k.server.Jetty
 import org.http4k.server.asServer
 val port = System.getenv()["API_PORT"] ?: 9000
