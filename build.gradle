@@ -117,6 +117,9 @@ task createOpenApiDirectory {
         mkdir("$projectDir/src/main/resources")
     }
 }
+tasks.named("openApiGenerate"){
+    enabled false
+}
 
 // Make downloadOpenApiSpec depend on createOpenApiDirectory
 downloadOpenApiSpec.dependsOn createOpenApiDirectory
