@@ -112,7 +112,7 @@ openApiGenerate {
  def USERNAME = System.getenv()["POSTGRES_USER"] ?: "postgres"
  def PASSWORD = System.getenv()["POSTGRES_PASSWORD"] ?: "postgres"
 
-jooq {
+/*jooq {
     version = jooqVersion
     configurations {
         main {
@@ -145,6 +145,8 @@ jooq {
         }
     }
 }
+*/
+
 tasks.register('createOpenApiDirectory') {
     doLast {
         mkdir("$projectDir/src/main/resources")
