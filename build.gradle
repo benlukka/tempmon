@@ -150,5 +150,8 @@ tasks.register('createOpenApiDirectory') {
         mkdir("$projectDir/src/main/resources")
     }
 }
+tasks.named("openApiGenerate"){
+    enabled false
+}
 
 downloadOpenApiSpec.dependsOn createOpenApiDirectory
