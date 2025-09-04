@@ -52,7 +52,7 @@ kotlin {
 }
 
 application {
-    mainClass = 'com.benlukka.MainKt'
+    mainClass = 'MainKt'
 }
 tasks.register('downloadOpenApiSpec', Download) {
     description "Downloads the OpenAPI specification from the running application."
