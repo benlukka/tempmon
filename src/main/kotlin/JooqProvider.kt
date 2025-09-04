@@ -13,8 +13,8 @@ import java.time.LocalDateTime
  */
 class JooqProvider {
     companion object {
-        private const val JDBC_URL = "jdbc:postgresql://localhost:5432/"
-        private const val JDBC_URL_WITH_DB = "jdbc:postgresql://localhost:5432/TempMon"
+        private const val JDBC_URL = "jdbc:postgresql://postgres:5432/"
+        private const val JDBC_URL_WITH_DB = "jdbc:postgresql://postgres:5432/TempMon"
         private val USERNAME = System.getenv()["POSTGRES_USER"] ?: "postgres"
         private val PASSWORD = System.getenv()["POSTGRES_PASSWORD"] ?: "postgres"
         private val DB_NAME = System.getenv()["POSTGRES_DB"] ?: "TempMon"
@@ -103,7 +103,7 @@ class JooqProvider {
 
     /**
      * Creates a new JDBC connection to the TempMon database.
-     * 
+     *
      * @return A new Connection object
      */
     fun createConnection(): Connection {
@@ -112,7 +112,7 @@ class JooqProvider {
 
     /**
      * Creates a new DSLContext for jOOQ operations using an existing connection.
-     * 
+     *
      * @param connection An existing JDBC connection
      * @return A new DSLContext object
      */
@@ -122,7 +122,7 @@ class JooqProvider {
 
     /**
      * Executes the given function with a DSLContext and automatically closes the connection.
-     * 
+     *
      * @param block The function to execute with the DSLContext
      * @return The result of the function
      */
@@ -136,7 +136,7 @@ class JooqProvider {
 
     /**
      * Saves a measurement to the database.
-     * 
+     *
      * @param temperature The temperature value (can be null)
      * @param humidity The humidity value (can be null)
      * @param ipAddress The client's IP address (can be null)
@@ -208,7 +208,7 @@ class JooqProvider {
     }
     /**
      * Retrieves all measurements from the database
-     * 
+     *
      * @param limit The maximum number of measurements to retrieve (default: 100)
      * @param offset The offset to start retrieving measurements from (default: 0)
      * @return A list of Measurement objects
@@ -325,7 +325,7 @@ class JooqProvider {
     }
     /**
      * Retrieves measurements from the database within a specified time range
-     * 
+     *
      * @param startTime The start time of the range (default: 24 hours ago)
      * @param endTime The end time of the range (default: now)
      * @return A list of Measurement objects
@@ -347,7 +347,7 @@ class JooqProvider {
 
     /**
      * Retrieves the latest measurement for each device
-     * 
+     *
      * @return A list of Measurement objects
      */
     fun getLatestMeasurementsByDevice(): List<Measurement> {
