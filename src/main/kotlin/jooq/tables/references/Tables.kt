@@ -5,7 +5,7 @@
 package com.benlukka.jooq.tables.references
 
 
-import com.benlukka.jooq.tables.Measurements
+import jooq.tables.Measurements
 
 
 

@@ -5,8 +5,8 @@
 package com.benlukka.jooq.keys
 
 
-import com.benlukka.jooq.tables.Measurements
-import com.benlukka.jooq.tables.records.MeasurementsRecord
+import jooq.tables.Measurements
+import jooq.tables.records.MeasurementsRecord
 
 import org.jooq.UniqueKey
 import org.jooq.impl.DSL
@@ -18,4 +18,6 @@ import org.jooq.impl.Internal
 // UNIQUE and PRIMARY KEY definitions
 // -------------------------------------------------------------------------
 
-val MEASUREMENTS_PKEY: UniqueKey<MeasurementsRecord> = Internal.createUniqueKey(Measurements.MEASUREMENTS, DSL.name("measurements_pkey"), arrayOf(Measurements.MEASUREMENTS.ID), true)
+val MEASUREMENTS_PKEY: UniqueKey<MeasurementsRecord> = Internal.createUniqueKey(
+    Measurements.MEASUREMENTS, DSL.name("measurements_pkey"), arrayOf(
+        Measurements.MEASUREMENTS.ID), true)
