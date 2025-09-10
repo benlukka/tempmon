@@ -1,6 +1,6 @@
 import org.http4k.server.Jetty
 import org.http4k.server.asServer
-val port = System.getenv()["API_PORT"] ?: 9000
+val port = System.getenv()["API_PORT"] ?: 9247
 fun main() {
     Thread {
         try {

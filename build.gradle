@@ -9,7 +9,7 @@ plugins {
 
 group = 'com.benlukka'
 version = '1.0-SNAPSHOT'
-def openApiSpecUrl = "http://localhost:9000/appApi.json"
+def openApiSpecUrl = "http://localhost:9247/appApi.json"
 def outputFilePath = "src/main/resources/openapi.json"
 def outputFile = file(outputFilePath)
 
@@ -49,6 +49,7 @@ dependencies {
     // PostgreSQL JDBC driver
     implementation("org.postgresql:postgresql:42.7.7")
 
+    implementation("org.slf4j:slf4j-nop:2.0.17")
     // jOOQ code generation dependencies (typically in a separate configuration)
     // The exact configuration name may depend on your build setup (e.g., jooqGenerator)
     jooqGenerator "org.jooq:jooq-meta:${jooqVersion}"

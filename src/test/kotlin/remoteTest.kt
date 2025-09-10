@@ -32,7 +32,7 @@ class RemoteTest {
     @Test
     fun testWithCustomIpAndPort() {
         val ip = "localhost"
-        val port = 9000
+        val port = 9247
         val baseUrl = "http://$ip:$port"
         val client = OkHttp()
         val request = Request(POST, Uri.of("$baseUrl/request"))
