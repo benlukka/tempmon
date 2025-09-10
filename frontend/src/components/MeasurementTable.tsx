@@ -37,7 +37,7 @@ const MeasurementTable: React.FC = () => {
 
     useEffect(() => {
         fetchMeasurements(pagination.current!, pagination.pageSize!);
-    }, [fetchMeasurements, pagination.current, pagination.pageSize, pagination]);
+    }, [fetchMeasurements, pagination.current, pagination.pageSize]);
 
     const handleTableChange = (newPagination: TablePaginationConfig) => {
         setPagination(newPagination);
