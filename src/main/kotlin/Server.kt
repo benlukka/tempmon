@@ -26,9 +26,8 @@ import org.http4k.routing.singlePageApp
 
 class RequestApplication {
 
-    private val jooqProvider = JooqProvider()
+    private val jooqProvider = JooqProvider
     init {
-        // Initialize the database when the application starts
         jooqProvider.initializeDatabase()
     }
 

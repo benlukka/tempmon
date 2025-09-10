@@ -19,29 +19,41 @@ repositories {
 def http4kVersion = "5.47.0.0"
 def jooqVersion = "3.20.5"
 dependencies {
+    // Testing
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
-    implementation("org.jmdns:jmdns:3.5.7")
-    implementation("org.http4k:http4k-client-okhttp:${http4kVersion}")
-    implementation("org.http4k:http4k-client-fuel:${http4kVersion}")
-    implementation("org.http4k:http4k-client-websocket:${http4kVersion}")
+
+    // http4k core and format libraries
     implementation("org.http4k:http4k-core:${http4kVersion}")
     implementation("org.http4k:http4k-format-jackson:${http4kVersion}")
     implementation("org.http4k:http4k-contract:${http4kVersion}")
     implementation("org.http4k:http4k-multipart:${http4kVersion}")
-    implementation("org.http4k:http4k-server-undertow:${http4kVersion}")
-    implementation("org.http4k:http4k-template-handlebars:${http4kVersion}")
-    implementation("org.http4k:http4k-server-jetty:${http4kVersion}")
-    implementation("org.http4k:http4k-client-websocket:${http4kVersion}")
     implementation("org.http4k:http4k-opentelemetry:${http4kVersion}")
+
+    // http4k client and server (choose one of each)
+    implementation("org.http4k:http4k-client-okhttp:${http4kVersion}") // For HTTP requests
+    implementation("org.http4k:http4k-server-jetty:${http4kVersion}")    // The server implementation
+
+    // http4k client for WebSockets (if needed)
+    // implementation("org.http4k:http4k-client-websocket:${http4kVersion}")
+
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.8.0")
+
+    // Third-party libraries
+    implementation("org.jmdns:jmdns:3.5.7")
 
     // jOOQ dependencies
     implementation("org.jooq:jooq:${jooqVersion}")
-    implementation("org.jooq:jooq-meta:${jooqVersion}")
-    implementation("org.jooq:jooq-codegen:${jooqVersion}")
-    jooqGenerator "org.postgresql:postgresql:42.7.7"
 
     // PostgreSQL JDBC driver
     implementation("org.postgresql:postgresql:42.7.7")
+
+    // jOOQ code generation dependencies (typically in a separate configuration)
+    // The exact configuration name may depend on your build setup (e.g., jooqGenerator)
+    jooqGenerator "org.jooq:jooq-meta:${jooqVersion}"
+    jooqGenerator "org.jooq:jooq-codegen:${jooqVersion}"
+    jooqGenerator "org.postgresql:postgresql:42.7.7"
 }
 
 test {

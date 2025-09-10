@@ -32,21 +32,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Frontend service
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    image: tempmon-frontend:latest
-    container_name: tempmon-frontend
-    ports:
-      - "3000:3000"
-    depends_on:
-      - app
-    restart: unless-stopped
-    environment:
-      - REACT_APP_API_URL=http://localhost:9000
-
 volumes:
   # Persistent volume for PostgreSQL data
   postgres-data:

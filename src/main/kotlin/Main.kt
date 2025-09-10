@@ -5,7 +5,7 @@ fun main() {
     Thread {
         try {
             println("Initializing TempMon database...")
-            JooqProvider().initializeDatabase()
+            JooqProvider.initializeDatabase()
             println("Database initialization completed successfully")
         } catch (e: Exception) {
             println("Error initializing database: ${e.message}")
@@ -30,6 +30,5 @@ fun main() {
         println("Error starting mDNS advertiser: ${e.message}")
         e.printStackTrace()
     }
-
 
 }
