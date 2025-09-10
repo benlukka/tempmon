@@ -45,7 +45,7 @@ In diesem Projekt ging es darum, die Temperaturentwicklung in den Räumen der Sc
    docker-compose up --build -d
    ```
 3. Dienste:
-   - **Backend/API**: `http://localhost:9000`
+   - **Backend/API**: `http://localhost:9247`
    - **Datenbank**: PostgreSQL auf Port `5432` (User/Passwort: `postgres`/`postgres`, DB: `TempMon`)
 
 ---
@@ -54,7 +54,7 @@ In diesem Projekt ging es darum, die Temperaturentwicklung in den Räumen der Sc
 
 Die API-Routen und ihre Funktionalität sind in der Datei `openapi.json` dokumentiert:
 
-- **Einsehen**: `http://localhost:9000/openapi.json`
+- **Einsehen**: `http://localhost:9247/openapi.json`
 - **Typisierte Clients**: Ein TypeScript-Fetch-Client wird automatisch basierend auf dieser Spezifikation erstellt.
 
 Beispiele für Endpunkte:
@@ -72,11 +72,11 @@ Für ein eigenes Frontend binden Sie den TypeScript-Client ein oder rufen die En
 Per Umgebungsvariablen in der `docker-compose.yml` anpassbar:
 
 | Variable            | Standardwert | Beschreibung                      |
-| ------------------- | ------------ | --------------------------------- |
+| ------------------- |--------------| --------------------------------- |
 | `POSTGRES_USER`     | `postgres`   | Datenbank-Benutzer                |
 | `POSTGRES_PASSWORD` | `postgres`   | Datenbank-Passwort                |
 | `POSTGRES_DB`       | `TempMon`    | Name der Datenbank                |
-| `API_PORT`          | `9000`       | Port, auf dem das Backend lauscht |
+| `API_PORT`          | `9247`       | Port, auf dem das Backend lauscht |
 
 ---
 
