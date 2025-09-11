@@ -34,7 +34,7 @@ class RequestApplication {
     // Helper function to add CORS headers to responses
     private fun Response.withCorsHeaders(): Response {
         return this
-            .header("Access-Control-Allow-Origin", "http://localhost:9247")
+            .header("Access-Control-Allow-Origin", "*")
             .header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
             .header("Access-Control-Allow-Headers", "Content-Type, Authorization")
             .header("Access-Control-Allow-Credentials", "true")
@@ -434,7 +434,7 @@ class RequestApplication {
     val app: RoutingHttpHandler = routes(
         contract {
             renderer = OpenApi3(ApiInfo(title = "Tempmon API", version = "3.0.0"),
-                servers = listOf(ApiServer(Uri.of("http://localhost:9247"))),
+                servers = listOf(ApiServer(Uri.of("http://host.docker.internal:9247")), ApiServer(Uri.of("http://localhost:9247"))),
             )
             descriptionPath = "/appApi.json"
             routes += listOf(
