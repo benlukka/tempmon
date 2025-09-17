@@ -6,9 +6,6 @@ import org.http4k.core.Request as HttpRequest // Alias org.http4k.core.Request t
 import org.http4k.core.Status.Companion.BAD_REQUEST
 import org.http4k.core.Status.Companion.OK
 import org.http4k.routing.ResourceLoader.Companion.Classpath
-import org.http4k.routing.RoutingHttpHandler
-import org.http4k.routing.bind
-import org.http4k.routing.routes
 import org.http4k.format.Jackson
 import org.http4k.format.Jackson.auto // This provides the Body.auto extension function
 import java.time.LocalDateTime
@@ -22,7 +19,7 @@ import org.http4k.core.*
 import org.http4k.lens.Query
 import org.http4k.lens.string
 import org.http4k.lens.int
-import org.http4k.routing.singlePageApp
+import org.http4k.routing.*
 
 class RequestApplication {
 
@@ -45,8 +42,8 @@ class RequestApplication {
             val myRequest: Request = request(httpRequest)
 
             val ipAddress = httpRequest.source?.address ?: "unknown"
-            val macAddress = httpRequest.header("X-MAC-Address")
-            val deviceName = httpRequest.header("X-Device-Name")
+            val macAddress = httpRequest.query("X-MAC-Address")
+            val deviceName = httpRequest.query("X-Device-Name")
 
             // Process the request based on its concrete type and save to database
             val responseMessage = when (myRequest) {
@@ -434,7 +431,7 @@ class RequestApplication {
     val app: RoutingHttpHandler = routes(
         contract {
             renderer = OpenApi3(ApiInfo(title = "Tempmon API", version = "3.0.0"),
-                servers = listOf(ApiServer(Uri.of("http://host.docker.internal:9247")), ApiServer(Uri.of("http://localhost:9247"))),
+                servers = listOf(ApiServer(Uri.of("http://localhost:9247"))),
             )
             descriptionPath = "/appApi.json"
             routes += listOf(
@@ -451,6 +448,13 @@ class RequestApplication {
             )
         },
         "/appApi.json" bind GET to handleOpenApiSpec,
-        "/" bind singlePageApp(Classpath("/static"))
-    )
+        "/static/{path:.*}" bind static(Classpath("/web/static")),
+
+        "/manifest.json" bind static(Classpath("/web")),
+        "/favicon.ico" bind static(Classpath("/web")),
+        "/logo192.png" bind static(Classpath("/web")),
+        "/logo512.png" bind static(Classpath("/web")),
+        "/robots.txt" bind static(Classpath("/web")),
+
+        "/{path:.*}" bind GET to singlePageApp(Classpath("/web"))    )
 }

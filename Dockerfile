@@ -18,5 +18,5 @@ RUN gradle shadowJar --no-daemon
 FROM eclipse-temurin:23-jre-alpine
 WORKDIR /app
 COPY --from=backend-builder /app/build/libs/TempMon-*.jar ./app.jar
-EXPOSE 9000
+EXPOSE 9247
 CMD ["java", "-jar", "app.jar"]

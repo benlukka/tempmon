@@ -5,10 +5,12 @@ plugins {
     id 'org.openapi.generator' version '6.6.0'
     id 'de.undercouch.download' version '5.4.0'
     id "nu.studer.jooq" version "10.1.1"
+    id 'com.github.node-gradle.node' version '7.1.0'
+
 }
 
 group = 'com.benlukka'
-version = '1.0-SNAPSHOT'
+version = '1.0'
 def openApiSpecUrl = "http://localhost:9247/appApi.json"
 def outputFilePath = "src/main/resources/openapi.json"
 def outputFile = file(outputFilePath)
@@ -16,6 +18,30 @@ def outputFile = file(outputFilePath)
 repositories {
     mavenCentral()
 }
+node {
+    // Specify the Node.js version to use
+    version = "20.16.0" // Adjust to your preferred Node.js LTS version
+    // Specify the Yarn version to use
+    yarnVersion = "1.22.19" // Adjust to your preferred Yarn version
+    // Set to true to download Node.js and Yarn if not found
+    download = true
+    // Set the working directory for Node.js/Yarn commands (your frontend root)
+    nodeProjectDir = file("frontend")
+    // The plugin automatically handles node_modules within nodeProjectDir
+}
+
+jar {
+    manifest {
+        attributes "Main-Class": "com.benlukka.MainKt"
+    }
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
 def http4kVersion = "5.47.0.0"
 def jooqVersion = "3.20.5"
 dependencies {
@@ -74,32 +100,34 @@ tasks.register('downloadOpenApiSpec', Download) {
     src openApiSpecUrl
     dest outputFile
     overwrite true
-    onlyIfNewer true // Only download if the remote file is newer than the local one
-    // Optional: Make the task fail if the download fails (default is true for the Download task)
-    // failOnError true
-
-    // Ensure the parent directory exists before downloading
     doFirst {
         if (!outputFile.parentFile.exists()) {
             outputFile.parentFile.mkdirs()
         }
     }
 }
-// Shadow JAR configuration
-shadowJar {
-    archiveBaseName.set('TempMon')
-    archiveClassifier.set('')
-    archiveVersion.set(version)
-    mergeServiceFiles()
-    manifest {
-        attributes 'Main-Class': application.mainClass
-    }
+def frontendDistDir = file('frontend/build')
+
+task cleanFrontend(type: Delete) {
+    delete frontendDistDir
 }
 
-// Fix dependency issues between tasks
-tasks.distZip.dependsOn tasks.shadowJar
-tasks.distTar.dependsOn tasks.shadowJar
-tasks.startScripts.dependsOn tasks.shadowJar
+task yarnInstall(type: YarnTask) {
+    dependsOn cleanFrontend
+    args = ['install']
+}
+
+// Task to run 'yarn build'
+tasks.register('yarnBuild', YarnTask) {
+    dependsOn yarnInstall // Ensure dependencies are installed first
+    args = ['build']
+}
+tasks.register('copyFrontendAssets', Copy) {
+    // This task now depends on the 'yarnBuild' task
+    dependsOn yarnBuild
+    from frontendDistDir
+    into "$buildDir/resources/main/web"
+}
 
 // OpenAPI client generation
 openApiGenerate {
@@ -124,7 +152,6 @@ openApiGenerate {
 }
  def USERNAME = System.getenv()["POSTGRES_USER"] ?: "postgres"
  def PASSWORD = System.getenv()["POSTGRES_PASSWORD"] ?: "postgres"
-
 /*jooq {
     version = jooqVersion
     configurations {
@@ -168,5 +195,7 @@ tasks.register('createOpenApiDirectory') {
 tasks.named("openApiGenerate"){
     enabled false
 }
-
+processResources {
+    dependsOn copyFrontendAssets
+}
 downloadOpenApiSpec.dependsOn createOpenApiDirectory
