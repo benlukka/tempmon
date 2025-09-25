@@ -22,20 +22,19 @@ import org.http4k.core.*
 import org.http4k.lens.Query
 import org.http4k.lens.string
 import org.http4k.lens.int
-import org.http4k.routing.singlePageApp
+import org.http4k.routing.*
 
 class RequestApplication {
 
-    private val jooqProvider = JooqProvider()
+    private val jooqProvider = JooqProvider
     init {
-        // Initialize the database when the application starts
         jooqProvider.initializeDatabase()
     }
 
     // Helper function to add CORS headers to responses
     private fun Response.withCorsHeaders(): Response {
         return this
-            .header("Access-Control-Allow-Origin", "http://localhost:3000")
+            .header("Access-Control-Allow-Origin", "*")
             .header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
             .header("Access-Control-Allow-Headers", "Content-Type, Authorization")
             .header("Access-Control-Allow-Credentials", "true")
@@ -46,8 +45,8 @@ class RequestApplication {
             val myRequest: Request = request(httpRequest)
 
             val ipAddress = httpRequest.source?.address ?: "unknown"
-            val macAddress = httpRequest.header("X-MAC-Address")
-            val deviceName = httpRequest.header("X-Device-Name")
+            val macAddress = httpRequest.query("X-MAC-Address")
+            val deviceName = httpRequest.query("X-Device-Name")
 
             // Process the request based on its concrete type and save to database
             val responseMessage = when (myRequest) {
@@ -329,7 +328,6 @@ class RequestApplication {
             )
         )
     )
-
     private val measurementsRoute = "/measurements" meta {
         summary = "Get all measurements"
         description = "Retrieves all measurements from the database with pagination"
@@ -425,7 +423,9 @@ class RequestApplication {
         receiving(request to TemperatureHumidityRequest(
             type = "TEMPERATURE_HUMIDITY",
             temperature = 25.0,
-            humidity = 60.0
+            humidity = 60.0,
+            ipAddress = "192.168.0.0",
+            deviceName = "Classroom Sensor"
         )
         )
         returning(OK to "Successful submission")
@@ -435,7 +435,7 @@ class RequestApplication {
     val app: RoutingHttpHandler = routes(
         contract {
             renderer = OpenApi3(ApiInfo(title = "Tempmon API", version = "3.0.0"),
-                servers = listOf(ApiServer(Uri.of("http://localhost:9000"))),
+                servers = listOf(ApiServer(Uri.of("http://localhost:9247"))),
             )
             descriptionPath = "/appApi.json"
             routes += listOf(
@@ -452,6 +452,13 @@ class RequestApplication {
             )
         },
         "/appApi.json" bind GET to handleOpenApiSpec,
-        "/" bind singlePageApp(Classpath("/static"))
-    )
+        "/static/{path:.*}" bind static(Classpath("/web/static")),
+
+        "/manifest.json" bind static(Classpath("/web")),
+        "/favicon.ico" bind static(Classpath("/web")),
+        "/logo192.png" bind static(Classpath("/web")),
+        "/logo512.png" bind static(Classpath("/web")),
+        "/robots.txt" bind static(Classpath("/web")),
+
+        "/{path:.*}" bind GET to singlePageApp(Classpath("/web"))    )
 }
