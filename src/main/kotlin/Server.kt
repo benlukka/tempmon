@@ -325,7 +325,6 @@ class RequestApplication {
             )
         )
     )
-
     private val measurementsRoute = "/measurements" meta {
         summary = "Get all measurements"
         description = "Retrieves all measurements from the database with pagination"
@@ -421,7 +420,9 @@ class RequestApplication {
         receiving(request to TemperatureHumidityRequest(
             type = "TEMPERATURE_HUMIDITY",
             temperature = 25.0,
-            humidity = 60.0
+            humidity = 60.0,
+            ipAddress = "192.168.0.0",
+            deviceName = "Classroom Sensor"
         )
         )
         returning(OK to "Successful submission")
