@@ -1,9 +1,8 @@
 import React, {useCallback, useEffect, useState} from "react";
-import {DefaultApi, Measurement, MeasurmentsWithCount} from "../generated";
+import {Measurement, MeasurmentsWithCount} from "../generated";
 import {Card, Table} from 'antd';
 import type {TableProps, TablePaginationConfig} from 'antd';
-
-const api = new DefaultApi();
+import { apiClient as api } from "../apiClient";
 
 
 const MeasurementTable: React.FC = () => {
@@ -68,13 +67,19 @@ const MeasurementTable: React.FC = () => {
             title: 'Temperatur',
             dataIndex: 'temperature',
             key: 'temperature',
-            render: (temp: number) => `${temp.toFixed(1)}°C`,
+            render: (temp: number) => {
+                const n = typeof temp === 'number' ? temp : Number(temp);
+                return Number.isFinite(n) ? `${n.toFixed(1)}°C` : 'N/A';
+            },
         },
         {
             title: 'Luftfeuchtigkeit',
             dataIndex: 'humidity',
             key: 'humidity',
-            render: (humidity: number) => `${humidity.toFixed(1)}%`,
+            render: (humidity: number) => {
+                const n = typeof humidity === 'number' ? humidity : Number(humidity);
+                return Number.isFinite(n) ? `${n.toFixed(1)}%` : 'N/A';
+            },
         }
     ];
 

@@ -3,8 +3,7 @@ import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
 import { Card, Col, Row, Skeleton, Statistic, Typography } from 'antd';
 import { DefaultApi } from "../generated";
 import { Gauge } from '@mui/x-charts/Gauge';
-
-const api = new DefaultApi();
+import { apiClient as api } from "../apiClient";
 const { Text } = Typography;
 
 // --- Dynamic Date Calculation Helper Functions ---
@@ -21,6 +20,12 @@ const getEndOfDay = (date: Date): Date => {
     const d = new Date(date);
     d.setHours(23, 59, 59, 999);
     return d;
+};
+
+// --- Helper: safely coerce any value to a number or null ---
+const toNumberOrNull = (value: unknown): number | null => {
+    const num = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(num) ? num : null;
 };
 
 // --- Helper function to calculate development and determine arrow ---
@@ -86,28 +91,34 @@ const CurrentTrend: React.FC = () => {
             const lastWeekEndTime = getEndOfDay(lastWeekSunday);
 
             // --- Fetch Temperature Data ---
-            const currentWeekAvgTemp = await api.getAvgTemperatureInTimeRange({
+            const currentWeekAvgTempRaw = await api.getAvgTemperatureInTimeRange({
                 startTime: thisWeekStartTime.toISOString(),
                 endTime: thisWeekEndTime.toISOString()
             });
+            const previousWeekAvgTempRaw = await api.getAvgTemperatureInTimeRange({
+                startTime: lastWeekStartTime.toISOString(),
+                endTime: lastWeekEndTime.toISOString()
+            });
+
+            const currentWeekAvgTemp = toNumberOrNull(currentWeekAvgTempRaw);
+            const previousWeekAvgTemp = toNumberOrNull(previousWeekAvgTempRaw);
+
             setThisWeekTemp(currentWeekAvgTemp);
 
-            const previousWeekAvgTemp = await api.getAvgTemperatureInTimeRange({
-                startTime: lastWeekStartTime.toISOString(),
-                endTime: lastWeekEndTime.toISOString()
-            });
-
             // --- Fetch Humidity Data ---
-            const currentWeekAvgHumidity = await api.getAvgHumidityInTimeRange({
+            const currentWeekAvgHumidityRaw = await api.getAvgHumidityInTimeRange({
                 startTime: thisWeekStartTime.toISOString(),
                 endTime: thisWeekEndTime.toISOString()
             });
-            setThisWeekHumidity(currentWeekAvgHumidity);
-
-            const previousWeekAvgHumidity = await api.getAvgHumidityInTimeRange({
+            const previousWeekAvgHumidityRaw = await api.getAvgHumidityInTimeRange({
                 startTime: lastWeekStartTime.toISOString(),
                 endTime: lastWeekEndTime.toISOString()
             });
+
+            const currentWeekAvgHumidity = toNumberOrNull(currentWeekAvgHumidityRaw);
+            const previousWeekAvgHumidity = toNumberOrNull(previousWeekAvgHumidityRaw);
+
+            setThisWeekHumidity(currentWeekAvgHumidity);
 
             // --- Calculate Development for both ---
             setTempDevelopmentData(calculateDevelopment(currentWeekAvgTemp, previousWeekAvgTemp));
@@ -129,12 +140,12 @@ const CurrentTrend: React.FC = () => {
     }
 
     // --- Temperature Card Display Values ---
-    const displayCurrentTemp = thisWeekTemp !== null ? thisWeekTemp.toFixed(2) : "N/A";
-    const displayTempDevelopment = tempDevelopmentData.development !== null ? tempDevelopmentData.development.toFixed(2) : "N/A";
+    const displayCurrentTemp = thisWeekTemp !== null ? Number(thisWeekTemp.toFixed(2)) : undefined;
+    const displayTempDevelopment = tempDevelopmentData.development !== null ? Number(tempDevelopmentData.development.toFixed(2)) : undefined;
 
     // --- Humidity Card Display Values ---
-    const displayCurrentHumidity = thisWeekHumidity !== null ? Number(thisWeekHumidity.toFixed(2)) : 0;
-    const displayHumidityDevelopment = humidityDevelopmentData.development !== null ? Number(humidityDevelopmentData.development.toFixed(2)) : 0;
+    const displayCurrentHumidity = thisWeekHumidity !== null ? Number(thisWeekHumidity.toFixed(2)) : undefined;
+    const displayHumidityDevelopment = humidityDevelopmentData.development !== null ? Number(humidityDevelopmentData.development.toFixed(2)) : undefined;
     return (
         <Row gutter={16}>
             {/* Temperature Card */}
@@ -154,7 +165,7 @@ const CurrentTrend: React.FC = () => {
                             <Skeleton.Input style={{ width: 100 }} active size="small" />
                         ) : (
                             <Text style={{ color: tempDevelopmentData.color, fontSize: '16px', fontWeight: 'bold' }}>
-                                {tempDevelopmentData.arrow} {displayTempDevelopment}%
+                                {tempDevelopmentData.arrow} {displayTempDevelopment !== undefined ? `${displayTempDevelopment}%` : 'N/A'}
                             </Text>
                         )}
                     </div>
@@ -178,7 +189,7 @@ const CurrentTrend: React.FC = () => {
                             <Skeleton.Input style={{ width: 100 }} active size="small" />
                         ) : (
                             <Text style={{ color: humidityDevelopmentData.color, fontSize: '16px', fontWeight: 'bold' }}>
-                                {humidityDevelopmentData.arrow} {displayHumidityDevelopment}%
+                                {humidityDevelopmentData.arrow} {displayHumidityDevelopment !== undefined ? `${displayHumidityDevelopment}%` : 'N/A'}
                             </Text>
                         )}
                     </div>
