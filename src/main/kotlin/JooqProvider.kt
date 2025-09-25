@@ -1,3 +1,4 @@
+import com.benlukka.jooq.tables.references.MEASUREMENTS
 import org.jooq.*
 import org.jooq.impl.DSL
 import java.sql.Connection
@@ -10,19 +11,33 @@ import java.time.LocalDateTime
  * This implementation connects to a PostgreSQL database on localhost
  * with the username and password "postgres".
  */
-object JooqProvider {
-    private val JDBC_URL = System.getenv()["POSTGRES_URL"] ?: "jdbc:postgresql://localhost:5432/"
-    private val JDBC_URL_WITH_DB = System.getenv()["POSTGRES_URL_WITH_DB"] ?: "jdbc:postgresql://localhost:5432/TempMon"
-    private val USERNAME = System.getenv()["POSTGRES_USER"] ?: "postgres"
-    private val PASSWORD = System.getenv()["POSTGRES_PASSWORD"] ?: "postgres"
-    private val DB_NAME = System.getenv()["POSTGRES_DB"] ?: "TempMon"
-    // Reference to the jOOQ generated table constant
-    private val MEASUREMENTS = com.benlukka.jooq.tables.Measurements.MEASUREMENTS
+class JooqProvider {
+    companion object {
+        private const val JDBC_URL = "jdbc:postgresql://localhost:5432/"
+        private const val JDBC_URL_WITH_DB = "jdbc:postgresql://localhost:5432/TempMon"
+        private val USERNAME = System.getenv()["POSTGRES_USER"] ?: "postgres"
+        private val PASSWORD = System.getenv()["POSTGRES_PASSWORD"] ?: "postgres"
+        private val DB_NAME = System.getenv()["POSTGRES_DB"] ?: "TempMon"
+
+        // SQL to create the measurements table if it doesn't exist
+        private const val CREATE_TABLE_SQL = """
+            CREATE TABLE IF NOT EXISTS measurements (
+                id SERIAL PRIMARY KEY,
+                timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                temperature FLOAT,
+                humidity FLOAT,
+                ip_address VARCHAR(45),
+                mac_address VARCHAR(17),
+                device_name VARCHAR(255)
+            )
+        """
+    }
 
     /**
      * Initializes the TempMon database and creates the measurements table if they don't exist.
      */
     fun initializeDatabase() {
+        // First, connect to the default PostgreSQL database to create the TempMon database if it doesn't exist
         var connection: Connection? = null
         var statement: Statement? = null
 
@@ -30,11 +45,13 @@ object JooqProvider {
             connection = DriverManager.getConnection(JDBC_URL, USERNAME, PASSWORD)
             statement = connection.createStatement()
 
+            // Check if the database exists
             val resultSet = statement.executeQuery(
                 "SELECT 1 FROM pg_database WHERE datname = '${DB_NAME.lowercase()}'"
             )
 
             if (!resultSet.next()) {
+                // Database doesn't exist, create it
                 statement.execute("CREATE DATABASE \"$DB_NAME\"")
                 println("Database $DB_NAME created successfully")
             } else {
@@ -42,6 +59,7 @@ object JooqProvider {
             }
         } catch (e: SQLException) {
             // PostgreSQL error code 42P04 means "database already exists"
+            // If this is the error, we can safely continue
             if (e.sqlState == "42P04") {
                 println("Database $DB_NAME already exists (from exception handler)")
             } else {
@@ -53,24 +71,31 @@ object JooqProvider {
             connection?.close()
         }
 
+        // Now connect to the TempMon database and create the measurements table if it doesn't exist
         try {
             withDslContext { dsl ->
-                dsl.createTableIfNotExists(MEASUREMENTS)
-                    .column(MEASUREMENTS.ID)
-                    .column(MEASUREMENTS.TIMESTAMP)
-                    .column(MEASUREMENTS.TEMPERATURE)
-                    .column(MEASUREMENTS.HUMIDITY)
-                    .column(MEASUREMENTS.IP_ADDRESS)
-                    .column(MEASUREMENTS.MAC_ADDRESS)
-                    .column(MEASUREMENTS.DEVICE_NAME)
-                    .constraints(
-                        DSL.primaryKey(MEASUREMENTS.ID)
-                    )
-                    .execute()
+                dsl.execute(CREATE_TABLE_SQL)
+                println("Measurements table created or already exists")
 
-                println("Measurements table created or already exists using jOOQ generated schema")
+                // Check if the new columns exist, and add them if they don't
+                try {
+                    // Try to add ip_address column if it doesn't exist
+                    dsl.execute("ALTER TABLE measurements ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45)")
+                    println("Added ip_address column or it already exists")
+
+                    // Try to add mac_address column if it doesn't exist
+                    dsl.execute("ALTER TABLE measurements ADD COLUMN IF NOT EXISTS mac_address VARCHAR(17)")
+                    println("Added mac_address column or it already exists")
+
+                    // Try to add device_name column if it doesn't exist
+                    dsl.execute("ALTER TABLE measurements ADD COLUMN IF NOT EXISTS device_name VARCHAR(255)")
+                    println("Added device_name column or it already exists")
+                } catch (e: SQLException) {
+                    println("Warning: Error adding new columns: ${e.message}")
+                }
             }
         } catch (e: SQLException) {
+            // Log the error but don't throw it - allow the application to continue
             println("Warning: Error creating measurements table: ${e.message}")
             println("The application will continue, but database functionality may be limited")
         }
@@ -78,7 +103,7 @@ object JooqProvider {
 
     /**
      * Creates a new JDBC connection to the TempMon database.
-     *
+     * 
      * @return A new Connection object
      */
     fun createConnection(): Connection {
@@ -87,7 +112,7 @@ object JooqProvider {
 
     /**
      * Creates a new DSLContext for jOOQ operations using an existing connection.
-     *
+     * 
      * @param connection An existing JDBC connection
      * @return A new DSLContext object
      */
@@ -97,7 +122,7 @@ object JooqProvider {
 
     /**
      * Executes the given function with a DSLContext and automatically closes the connection.
-     *
+     * 
      * @param block The function to execute with the DSLContext
      * @return The result of the function
      */
@@ -111,7 +136,7 @@ object JooqProvider {
 
     /**
      * Saves a measurement to the database.
-     *
+     * 
      * @param temperature The temperature value (can be null)
      * @param humidity The humidity value (can be null)
      * @param ipAddress The client's IP address (can be null)
@@ -170,7 +195,6 @@ object JooqProvider {
         val devices: List<Device>,
         val name: String
     )
-
     private fun Record.toMeasurement(): Measurement {
         return Measurement(
             id = this.get(MEASUREMENTS.ID) ?: -1,
@@ -182,10 +206,9 @@ object JooqProvider {
             deviceName = this.get(MEASUREMENTS.DEVICE_NAME)
         )
     }
-
     /**
      * Retrieves all measurements from the database
-     *
+     * 
      * @param limit The maximum number of measurements to retrieve (default: 100)
      * @param offset The offset to start retrieving measurements from (default: 0)
      * @return A list of Measurement objects
@@ -201,7 +224,6 @@ object JooqProvider {
                 .let { records -> records.map { record -> record.toMeasurement()} }
         }
     }
-
     fun getCountOfMeasurements(): Int {
         return withDslContext { dsl ->
             dsl.selectCount()
@@ -210,7 +232,6 @@ object JooqProvider {
                 ?.value1() ?: 0
         }
     }
-
     fun getMeasurementsByMacAddress(macAddress: String, limit: Int = 100, offset: Int = 0): List<Measurement> {
         return withDslContext { dsl ->
             dsl.select()
@@ -223,7 +244,6 @@ object JooqProvider {
                 .let { records -> records.map { record -> record.toMeasurement()} }
         }
     }
-
     fun getMeasurementsByRoom(room: String, limit: Int = 100, offset: Int = 0): List<Measurement> {
         return withDslContext { dsl ->
             dsl.select()
@@ -236,12 +256,11 @@ object JooqProvider {
                 .let { records -> records.map { record -> record.toMeasurement()} }
         }
     }
-
     fun getAllDevices(limit: Int = 100, offset: Int = 0): List<Device> {
         return withDslContext { dsl ->
             dsl.select(MEASUREMENTS.MAC_ADDRESS, MEASUREMENTS.DEVICE_NAME)
                 .from(MEASUREMENTS)
-                .groupBy(MEASUREMENTS.MAC_ADDRESS, MEASUREMENTS.DEVICE_NAME)
+                .groupBy(MEASUREMENTS.MAC_ADDRESS, MEASUREMENTS.DEVICE_NAME) // Or use distinct on
                 .orderBy(MEASUREMENTS.MAC_ADDRESS)
                 .limit(limit)
                 .offset(offset)
@@ -269,19 +288,18 @@ object JooqProvider {
                 }
         }
     }
-
     fun getAverageTemperature(
         startTime: LocalDateTime = LocalDateTime.now().minusDays(1), // Default to last 24 hours
         endTime: LocalDateTime = LocalDateTime.now()
     ): Float? {
         return withDslContext { dsl ->
-            val timestampField = MEASUREMENTS.TIMESTAMP
+            val timestampField = MEASUREMENTS.TIMESTAMP // Assuming 'timestamp' column
             val temperatureField = MEASUREMENTS.TEMPERATURE
 
             dsl.select(DSL.avg(temperatureField).`as`("avg_temp"))
                 .from(MEASUREMENTS)
-                .where(timestampField.ge(startTime))
-                .and(timestampField.le(endTime))
+                .where(timestampField.ge(startTime)) // Greater than or equal to start time
+                .and(timestampField.le(endTime))    // Less than or equal to end time
                 .fetchOne()
                 ?.getValue("avg_temp", Double::class.java)
                 ?.toFloat()
@@ -293,22 +311,21 @@ object JooqProvider {
         endTime: LocalDateTime = LocalDateTime.now()
     ): Float? {
         return withDslContext { dsl ->
-            val timestampField = MEASUREMENTS.TIMESTAMP
-            val humidityField = MEASUREMENTS.HUMIDITY
+            val timestampField = MEASUREMENTS.TIMESTAMP // Assuming 'timestamp' column
+            val humidityField = MEASUREMENTS.HUMIDITY // *** Corrected to humidity field ***
 
-            dsl.select(DSL.avg(humidityField).`as`("avg_humidity"))
+            dsl.select(DSL.avg(humidityField).`as`("avg_humidity")) // *** Corrected alias ***
                 .from(MEASUREMENTS)
-                .where(timestampField.ge(startTime))
-                .and(timestampField.le(endTime))
+                .where(timestampField.ge(startTime)) // Greater than or equal to start time
+                .and(timestampField.le(endTime))    // Less than or equal to end time
                 .fetchOne()
-                ?.getValue("avg_humidity", Double::class.java)
+                ?.getValue("avg_humidity", Double::class.java) // *** Corrected to humidity alias ***
                 ?.toFloat()
         }
     }
-
     /**
      * Retrieves measurements from the database within a specified time range
-     *
+     * 
      * @param startTime The start time of the range (default: 24 hours ago)
      * @param endTime The end time of the range (default: now)
      * @return A list of Measurement objects
@@ -325,12 +342,12 @@ object JooqProvider {
                 .orderBy(MEASUREMENTS.TIMESTAMP.asc())
                 .fetch()
                 .let { records -> records.map { record -> record.toMeasurement()} }
+                }
         }
-    }
 
     /**
      * Retrieves the latest measurement for each device
-     *
+     * 
      * @return A list of Measurement objects
      */
     fun getLatestMeasurementsByDevice(): List<Measurement> {
