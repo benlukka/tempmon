@@ -23,13 +23,12 @@ import {
 import type { DefaultOptionType } from "antd/lib/select"
 import dayjs, { Dayjs } from "dayjs"
 
-import { DefaultApi, Room, Measurement } from "../generated"
+import { Room, Measurement } from "../generated"
 import LineChartCompare, { ChartMetric } from "./LineChartCompare"
+import { apiClient as api } from "../apiClient"
 
 const { Title, Text } = Typography
 const { RangePicker } = DatePicker
-
-const api = new DefaultApi()
 
 export interface SelectedRoomInfo {
     value: string

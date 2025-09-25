@@ -1,6 +1,5 @@
 import {Card} from "antd";
 import "../index.css";
-import AreaChartFillByValue from "../pages/test/components/OutOfBoundChart";
 import {useEffect, useState} from "react";
 import {GetMeasurementsForRoomRequest, Measurement} from "../generated";
 import {apiClient} from "../apiClient";
@@ -26,9 +25,6 @@ export default function RoomComponent({roomName}: RoomComponentProps) {
             <Card>
                 {roomName}
                 <br/>
-                {measurments && (
-                    <AreaChartFillByValue measurments={measurments}/>
-                ) }
             </Card>
         </div>
     )
