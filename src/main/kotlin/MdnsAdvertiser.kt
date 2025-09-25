@@ -3,43 +3,43 @@ import java.net.NetworkInterface
 import javax.jmdns.JmDNS
 import javax.jmdns.ServiceInfo
 
+fun getNetworkInterfaceAddress(): InetAddress? {
+    try {
+        val interfaces = NetworkInterface.getNetworkInterfaces()
+        while (interfaces.hasMoreElements()) {
+            val networkInterface = interfaces.nextElement()
+
+            // Skip loopback and inactive interfaces
+            if (networkInterface.isLoopback || !networkInterface.isUp || networkInterface.isVirtual || networkInterface.isPointToPoint || networkInterface.name.contains("docker")) {
+                continue
+            }
+
+            val addresses = networkInterface.inetAddresses
+            while (addresses.hasMoreElements()) {
+                val address = addresses.nextElement()
+
+                // Look for IPv4 addresses that are not loopback
+                if (!address.isLoopbackAddress &&
+                    !address.isLinkLocalAddress &&
+                    address.isSiteLocalAddress &&
+                    address.hostAddress.contains(".")) {
+
+                    println("Using network interface: ${networkInterface.name} -> ${address.hostAddress}")
+                    return address
+                }
+            }
+        }
+    } catch (e: Exception) {
+        println("Error getting network interface: ${e.message}")
+    }
+
+    return null
+}
 object MdnsAdvertiser: Thread() {
 
     /**
      * Gets the actual network interface IP address (not localhost)
      */
-    private fun getNetworkInterfaceAddress(): InetAddress? {
-        try {
-            val interfaces = NetworkInterface.getNetworkInterfaces()
-            while (interfaces.hasMoreElements()) {
-                val networkInterface = interfaces.nextElement()
-
-                // Skip loopback and inactive interfaces
-                if (networkInterface.isLoopback || !networkInterface.isUp) {
-                    continue
-                }
-
-                val addresses = networkInterface.inetAddresses
-                while (addresses.hasMoreElements()) {
-                    val address = addresses.nextElement()
-
-                    // Look for IPv4 addresses that are not loopback
-                    if (!address.isLoopbackAddress &&
-                        !address.isLinkLocalAddress &&
-                        address.isSiteLocalAddress &&
-                        address.hostAddress.contains(".")) {
-
-                        println("Using network interface: ${networkInterface.name} -> ${address.hostAddress}")
-                        return address
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            println("Error getting network interface: ${e.message}")
-        }
-
-        return null
-    }
 
     override fun start() {
         try {

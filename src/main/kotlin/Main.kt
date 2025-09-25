@@ -1,9 +1,12 @@
 import org.http4k.server.Jetty
 import org.http4k.server.asServer
+import java.lang.Thread.sleep
+
 val port = System.getenv()["API_PORT"] ?: 9247
 fun main() {
     Thread {
         try {
+            sleep(10000) // wait for the database to be ready
             println("Initializing TempMon database...")
             JooqProvider.initializeDatabase()
             println("Database initialization completed successfully")

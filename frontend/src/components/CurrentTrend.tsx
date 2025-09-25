@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
-import { Card, Col, Row, Statistic, Typography } from 'antd';
+import { Card, Col, Row, Skeleton, Statistic, Typography } from 'antd';
 import { DefaultApi } from "../generated";
+import { Gauge } from '@mui/x-charts/Gauge';
 
 const api = new DefaultApi();
 const { Text } = Typography;
@@ -9,10 +10,10 @@ const { Text } = Typography;
 // --- Dynamic Date Calculation Helper Functions ---
 const getMondayOfWeek = (date: Date): Date => {
     const d = new Date(date);
-    const dayOfWeek = d.getDay(); // Sunday is 0, Monday is 1, ..., Saturday is 6
-    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Days to subtract to get to Monday
+    const dayOfWeek = d.getDay();
+    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     d.setDate(d.getDate() - diff);
-    d.setHours(0, 0, 0, 0); // Set to start of the day
+    d.setHours(0, 0, 0, 0);
     return d;
 };
 
@@ -66,68 +67,62 @@ const CurrentTrend: React.FC = () => {
 
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const fetchAllData = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const today = new Date();
 
+            // Calculate Date Ranges
+            const thisWeekStartTime = getMondayOfWeek(today);
+            const thisWeekEndTime = getEndOfDay(today);
+
+            const lastWeekMonday = new Date(thisWeekStartTime);
+            lastWeekMonday.setDate(thisWeekStartTime.getDate() - 7);
+            const lastWeekSunday = new Date(thisWeekStartTime);
+            lastWeekSunday.setDate(thisWeekStartTime.getDate() - 1);
+
+            const lastWeekStartTime = getMondayOfWeek(lastWeekMonday);
+            const lastWeekEndTime = getEndOfDay(lastWeekSunday);
+
+            // --- Fetch Temperature Data ---
+            const currentWeekAvgTemp = await api.getAvgTemperatureInTimeRange({
+                startTime: thisWeekStartTime.toISOString(),
+                endTime: thisWeekEndTime.toISOString()
+            });
+            setThisWeekTemp(currentWeekAvgTemp);
+
+            const previousWeekAvgTemp = await api.getAvgTemperatureInTimeRange({
+                startTime: lastWeekStartTime.toISOString(),
+                endTime: lastWeekEndTime.toISOString()
+            });
+
+            // --- Fetch Humidity Data ---
+            const currentWeekAvgHumidity = await api.getAvgHumidityInTimeRange({
+                startTime: thisWeekStartTime.toISOString(),
+                endTime: thisWeekEndTime.toISOString()
+            });
+            setThisWeekHumidity(currentWeekAvgHumidity);
+
+            const previousWeekAvgHumidity = await api.getAvgHumidityInTimeRange({
+                startTime: lastWeekStartTime.toISOString(),
+                endTime: lastWeekEndTime.toISOString()
+            });
+
+            // --- Calculate Development for both ---
+            setTempDevelopmentData(calculateDevelopment(currentWeekAvgTemp, previousWeekAvgTemp));
+            setHumidityDevelopmentData(calculateDevelopment(currentWeekAvgHumidity, previousWeekAvgHumidity));
+
+        } catch (err) {
+            console.error("Failed to fetch environmental data:", err);
+            setError("Failed to load environmental data.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
     useEffect(() => {
-        const fetchAllData = async () => {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const today = new Date();
-
-                // Calculate Date Ranges
-                const thisWeekStartTime = getMondayOfWeek(today);
-                const thisWeekEndTime = getEndOfDay(today);
-
-                const lastWeekMonday = new Date(thisWeekStartTime);
-                lastWeekMonday.setDate(thisWeekStartTime.getDate() - 7);
-                const lastWeekSunday = new Date(thisWeekStartTime);
-                lastWeekSunday.setDate(thisWeekStartTime.getDate() - 1);
-
-                const lastWeekStartTime = getMondayOfWeek(lastWeekMonday);
-                const lastWeekEndTime = getEndOfDay(lastWeekSunday);
-
-                // --- Fetch Temperature Data ---
-                const currentWeekAvgTemp = await api.getAvgTemperatureInTimeRange({
-                    startTime: thisWeekStartTime.toISOString(),
-                    endTime: thisWeekEndTime.toISOString()
-                });
-                setThisWeekTemp(currentWeekAvgTemp);
-
-                const previousWeekAvgTemp = await api.getAvgTemperatureInTimeRange({
-                    startTime: lastWeekStartTime.toISOString(),
-                    endTime: lastWeekEndTime.toISOString()
-                });
-
-                // --- Fetch Humidity Data ---
-                const currentWeekAvgHumidity = await api.getAvgHumidityInTimeRange({
-                    startTime: thisWeekStartTime.toISOString(),
-                    endTime: thisWeekEndTime.toISOString()
-                });
-                setThisWeekHumidity(currentWeekAvgHumidity);
-
-                const previousWeekAvgHumidity = await api.getAvgHumidityInTimeRange({
-                    startTime: lastWeekStartTime.toISOString(),
-                    endTime: lastWeekEndTime.toISOString()
-                });
-
-                // --- Calculate Development for both ---
-                setTempDevelopmentData(calculateDevelopment(currentWeekAvgTemp, previousWeekAvgTemp));
-                setHumidityDevelopmentData(calculateDevelopment(currentWeekAvgHumidity, previousWeekAvgHumidity));
-
-            } catch (err) {
-                console.error("Failed to fetch environmental data:", err);
-                setError("Failed to load environmental data.");
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
         fetchAllData();
     }, []);
-
-    if (isLoading) {
-        return <p>Loading environmental trends...</p>;
-    }
 
     if (error) {
         return <p style={{ color: 'red' }}>Error: {error}</p>;
@@ -138,9 +133,8 @@ const CurrentTrend: React.FC = () => {
     const displayTempDevelopment = tempDevelopmentData.development !== null ? tempDevelopmentData.development.toFixed(2) : "N/A";
 
     // --- Humidity Card Display Values ---
-    const displayCurrentHumidity = thisWeekHumidity !== null ? thisWeekHumidity.toFixed(2) : "N/A";
-    const displayHumidityDevelopment = humidityDevelopmentData.development !== null ? humidityDevelopmentData.development.toFixed(2) : "N/A";
-
+    const displayCurrentHumidity = thisWeekHumidity !== null ? Number(thisWeekHumidity.toFixed(2)) : 0;
+    const displayHumidityDevelopment = humidityDevelopmentData.development !== null ? Number(humidityDevelopmentData.development.toFixed(2)) : 0;
     return (
         <Row gutter={16}>
             {/* Temperature Card */}
@@ -156,9 +150,13 @@ const CurrentTrend: React.FC = () => {
                         <Text type="secondary" style={{ fontSize: '14px' }}>
                             Veränderung vs. Letzte Woche: {' '}
                         </Text>
-                        <Text style={{ color: tempDevelopmentData.color, fontSize: '16px', fontWeight: 'bold' }}>
-                            {tempDevelopmentData.arrow} {displayTempDevelopment}%
-                        </Text>
+                        {isLoading ? (
+                            <Skeleton.Input style={{ width: 100 }} active size="small" />
+                        ) : (
+                            <Text style={{ color: tempDevelopmentData.color, fontSize: '16px', fontWeight: 'bold' }}>
+                                {tempDevelopmentData.arrow} {displayTempDevelopment}%
+                            </Text>
+                        )}
                     </div>
                 </Card>
             </Col>
@@ -176,9 +174,13 @@ const CurrentTrend: React.FC = () => {
                         <Text type="secondary" style={{ fontSize: '14px' }}>
                             Veränderung vs. Letzte Woche: {' '}
                         </Text>
-                        <Text style={{ color: humidityDevelopmentData.color, fontSize: '16px', fontWeight: 'bold' }}>
-                            {humidityDevelopmentData.arrow} {displayHumidityDevelopment}%
-                        </Text>
+                        {isLoading ? (
+                            <Skeleton.Input style={{ width: 100 }} active size="small" />
+                        ) : (
+                            <Text style={{ color: humidityDevelopmentData.color, fontSize: '16px', fontWeight: 'bold' }}>
+                                {humidityDevelopmentData.arrow} {displayHumidityDevelopment}%
+                            </Text>
+                        )}
                     </div>
                 </Card>
             </Col>
