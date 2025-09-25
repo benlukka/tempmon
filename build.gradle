@@ -6,7 +6,6 @@ plugins {
     id 'de.undercouch.download' version '5.4.0'
     id "nu.studer.jooq" version "10.1.1"
     id 'com.github.node-gradle.node' version '7.1.0'
-
 }
 
 group = 'com.benlukka'
@@ -87,7 +86,15 @@ test {
     useJUnitPlatform()
 }
 kotlin {
-    jvmToolchain(23)
+    jvmToolchain(21)
+    sourceSets {
+        main {
+            kotlin.srcDir('src/generated/jooqDatabase')
+        }
+        test {
+            kotlin.srcDir('src/test/kotlin')
+        }
+    }
 }
 
 application {
@@ -152,7 +159,8 @@ openApiGenerate {
 }
  def USERNAME = System.getenv()["POSTGRES_USER"] ?: "postgres"
  def PASSWORD = System.getenv()["POSTGRES_PASSWORD"] ?: "postgres"
-/*jooq {
+/*
+jooq {
     version = jooqVersion
     configurations {
         main {

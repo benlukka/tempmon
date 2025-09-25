@@ -4,7 +4,6 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import TestPage from "./pages/test";
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -14,7 +13,6 @@ root.render(
       <Router>
           <Routes>
               <Route path={"/"} element={<App />}/>
-              <Route path={"/test"} element={<TestPage />}/>
           </Routes>
         </Router>
   </React.StrictMode>

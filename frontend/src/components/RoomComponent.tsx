@@ -1,28 +1,34 @@
 import {Card} from "antd";
-import Icon from "./Icon";
 import "../index.css";
+import AreaChartFillByValue from "../pages/test/components/OutOfBoundChart";
+import {useEffect, useState} from "react";
+import {GetMeasurementsForRoomRequest, Measurement} from "../generated";
+import {apiClient} from "../apiClient";
 interface RoomComponentProps {
     roomName: string;
     temperature: number;
     humidity: number;
 }
-
-export default function RoomComponent({roomName, temperature, humidity}: RoomComponentProps) {
+export default function RoomComponent({roomName}: RoomComponentProps) {
+    const [measurments, setMeasurments] = useState<Measurement[]>()
+    useEffect(() => {
+        apiClient.getMeasurementsForRoom({room: "Zimmer"})
+            .then((fetchedMeasurments: Measurement[]) => {
+                console.log(fetchedMeasurments)
+                setMeasurments(fetchedMeasurments)
+            })
+            .catch(err => {
+                console.error("Failed to load rooms", err)
+            })
+    }, [])
     return (
         <div>
             <Card>
                 {roomName}
                 <br/>
-                <p className={"Room-info"}>
-                    <Icon className={""}>
-                        thermometer
-                    </Icon>
-                    Temperature: {temperature}°C
-                </p>
-                <Icon className={""}>
-                    water_drop
-                </Icon>
-                  Humidity: {humidity}%
+                {measurments && (
+                    <AreaChartFillByValue measurments={measurments}/>
+                ) }
             </Card>
         </div>
     )
