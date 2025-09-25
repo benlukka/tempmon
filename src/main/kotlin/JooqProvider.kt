@@ -1,3 +1,4 @@
+import com.benlukka.jooq.tables.references.MEASUREMENTS
 import org.jooq.*
 import org.jooq.impl.DSL
 import java.sql.Connection
@@ -5,19 +6,18 @@ import java.sql.DriverManager
 import java.sql.SQLException
 import java.sql.Statement
 import java.time.LocalDateTime
+
 /**
  * Provides a jOOQ DSLContext for database operations.
  * This implementation connects to a PostgreSQL database on localhost
  * with the username and password "postgres".
  */
 object JooqProvider {
-    private val JDBC_URL = System.getenv()["POSTGRES_URL"] ?: "jdbc:postgresql://localhost:5432/"
-    private val JDBC_URL_WITH_DB = System.getenv()["POSTGRES_URL_WITH_DB"] ?: "jdbc:postgresql://localhost:5432/TempMon"
+    private  val JDBC_URL = System.getenv()["POSTGRES_URL"] ?: "jdbc:postgresql://localhost:5432/"
+    private  val JDBC_URL_WITH_DB = System.getenv()["POSTGRES_URL_WITH_DB"] ?: "jdbc:postgresql://localhost:5432/TempMon"
     private val USERNAME = System.getenv()["POSTGRES_USER"] ?: "postgres"
     private val PASSWORD = System.getenv()["POSTGRES_PASSWORD"] ?: "postgres"
     private val DB_NAME = System.getenv()["POSTGRES_DB"] ?: "TempMon"
-    // Reference to the jOOQ generated table constant
-    private val MEASUREMENTS = com.benlukka.jooq.tables.Measurements.MEASUREMENTS
 
     /**
      * Initializes the TempMon database and creates the measurements table if they don't exist.
@@ -128,7 +128,7 @@ object JooqProvider {
     ): Int {
         return withDslContext { dsl ->
             dsl.insertInto(
-               MEASUREMENTS,
+                MEASUREMENTS,
                 MEASUREMENTS.TEMPERATURE,
                 MEASUREMENTS.HUMIDITY,
                 MEASUREMENTS.IP_ADDRESS,
@@ -142,9 +142,9 @@ object JooqProvider {
                     macAddress,
                     deviceName
                 )
-            .returningResult(MEASUREMENTS.ID)
-            .fetchOne()
-            ?.getValue(MEASUREMENTS.ID) ?: -1
+                .returningResult(MEASUREMENTS.ID)
+                .fetchOne()
+                ?.getValue(MEASUREMENTS.ID) ?: -1
         }
     }
 
