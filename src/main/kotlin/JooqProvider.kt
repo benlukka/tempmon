@@ -13,8 +13,8 @@ import java.time.LocalDateTime
  * with the username and password "postgres".
  */
 object JooqProvider {
-    private  val JDBC_URL = System.getenv()["POSTGRES_URL"] ?: "jdbc:postgresql://postgres:5432/"
-    private  val JDBC_URL_WITH_DB = System.getenv()["POSTGRES_URL_WITH_DB"] ?: "jdbc:postgresql://postgres:5432/TempMon"
+    private  val JDBC_URL = System.getenv()["POSTGRES_URL"] ?: "jdbc:postgresql://localhost:5432/"
+    private  val JDBC_URL_WITH_DB = System.getenv()["POSTGRES_URL_WITH_DB"] ?: "jdbc:postgresql://localhost:5432/TempMon"
     private val USERNAME = System.getenv()["POSTGRES_USER"] ?: "postgres"
     private val PASSWORD = System.getenv()["POSTGRES_PASSWORD"] ?: "postgres"
     private val DB_NAME = System.getenv()["POSTGRES_DB"] ?: "TempMon"
