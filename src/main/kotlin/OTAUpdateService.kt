@@ -1,12 +1,139 @@
+import org.http4k.contract.meta
+import org.http4k.contract.openapi.OpenAPIJackson.auto
+import org.http4k.core.Body
+import org.http4k.core.HttpHandler
+import org.http4k.core.Method.GET
+import org.http4k.core.Response
+import org.http4k.core.Status.Companion.BAD_REQUEST
+import org.http4k.core.Status.Companion.OK
+import org.http4k.core.with
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
+import java.net.InetAddress
 import java.util.concurrent.TimeUnit
+import javax.jmdns.JmDNS
+import javax.jmdns.ServiceListener
+import javax.jmdns.ServiceEvent
+import java.util.concurrent.ConcurrentHashMap
+import org.http4k.core.Request as HttpRequest
 
 /**
  * Kotlin wrapper for executing ESP32 OTA uploads using espota.py
  * This class provides a clean interface to upload firmware over WiFi to ESP32 devices
  */
+data class OtaDevice(
+    val ipAddress: String,
+    val deviceName: String,
+    val version: String,
+    val deviceBoard: String,
+    val chipModel: String,
+    val wifiRssi: String,
+    val lastSeen: Long
+)
+
+object OtaDeviceDiscoveryService : Thread() {
+    val discoveredDevices = ConcurrentHashMap<String, OtaDevice>()
+    private const val SERVICE_TYPE = "_arduino._tcp.local."
+    private lateinit var jmdns: JmDNS
+
+    val devices: List<OtaDevice>
+        get() = discoveredDevices.values.toList().sortedBy { it.deviceName }
+
+    override fun run() {
+        try {
+            val address = InetAddress.getLocalHost()
+            jmdns = JmDNS.create(address)
+
+            jmdns.addServiceListener(SERVICE_TYPE, object : ServiceListener {
+                override fun serviceResolved(event: ServiceEvent) {
+                    val service = event.info
+                    val ip = service.inet4Addresses.firstOrNull()?.hostAddress ?: return
+
+                    println("Device Resolved: ${service.name} at $ip")
+                    println("Properties: ${service.propertyNames.toList()}")
+
+                    val now = System.currentTimeMillis()
+
+                    val otaDevice = OtaDevice(
+                        ipAddress = ip,
+                        deviceName = service.name,
+                        version = service.getPropertyString("version") ?: "N/A",
+                        deviceBoard = service.getPropertyString("board") ?: "Unknown",
+                        chipModel = service.getPropertyString("chip_model") ?: "Unknown",
+                        wifiRssi = service.getPropertyString("wifi_rssi") ?: "Unknown",
+                        lastSeen = now
+                    )
+
+                    discoveredDevices[ip] = otaDevice
+                }
+
+                override fun serviceAdded(event: ServiceEvent) {
+                    jmdns.requestServiceInfo(event.type, event.name)
+                }
+
+                override fun serviceRemoved(event: ServiceEvent) {
+                    println("Device Removed: ${event.name}")
+                    val ip = event.info?.inet4Addresses?.firstOrNull()?.hostAddress
+                    if (ip != null) {
+                        discoveredDevices.remove(ip)
+                    }
+                }
+            })
+
+            while (!this.isInterrupted) {
+                sleep(1000)
+            }
+
+        } catch (e: Exception) {
+            System.err.println("JmDNS discovery error: ${e.message}")
+        } finally {
+            if (::jmdns.isInitialized) {
+                jmdns.close()
+            }
+        }
+    }
+
+    fun stopDiscovery() {
+        interrupt()
+    }
+}
+
+private val OtaDeviceLens = Body.auto<List<OtaDevice>>().toLens()
+private val exampleOtaDeviceList = listOf(
+    OtaDevice(
+        ipAddress = "192.168.0.0",
+        deviceName = "TempMon-DeviceRoom1234",
+        version = "1.0.0",
+        deviceBoard = "esp32",
+        chipModel = "ESP32D0WDQ6",
+        wifiRssi = "-45",
+        lastSeen = 0
+    ))
+
+/**
+ * The HTTP endpoint now retrieves the cached list from the background service instantly.
+ */
+private val hadleGetOtaDevices: HttpHandler = { _: HttpRequest ->
+    try {
+        val devices = OtaDeviceDiscoveryService.devices
+        Response(OK)
+            .header("Content-Type", "text/plain")
+            .with(OtaDeviceLens of devices)
+            .withCorsHeaders()
+    } catch (e: Exception) {
+        Response(BAD_REQUEST)
+            .header("Content-Type", "text/plain")
+            .body("Error retrieving devices: ${e.message}")
+            .withCorsHeaders()
+    }
+}
+val otaDeviceRoutes = "/otaDevices" meta {
+    summary = "Get all OTA update capable devices"
+    operationId = "getAllOtaDevices"
+    returning(OK, OtaDeviceLens to exampleOtaDeviceList, "Successful response OTA available devices")
+    returning(BAD_REQUEST to "Error retrieving all rooms")
+} bindContract GET to hadleGetOtaDevices
 
 //THIS CODE IS NOT PRODUCTION READY AND THEREFORE NOT IMPLEMENTED IN THE APP
 class EspOtaUploader(
@@ -37,7 +164,6 @@ class EspOtaUploader(
         val progress: Boolean = true,
         val spiffs: Boolean = false
     )
-
     /**
      * Upload firmware to ESP32 device over WiFi with configuration object
      */

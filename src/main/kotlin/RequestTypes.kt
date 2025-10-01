@@ -31,7 +31,7 @@ data class TemperatureHumidityRequest(
     override val type: String = "TEMPERATURE_HUMIDITY",
     val temperature: Double? = null,
     val humidity: Double? = null,
-    val ipAddress: String? = null,
+    val macAddress: String? = null,
     val deviceName: String? = null
 ) : Request
 
@@ -43,9 +43,9 @@ data class HumidityRequest(
     // The 'type' discriminator, matching the name defined in @JsonSubTypes for this class
     override val type: String = "HUMIDITY",
     val humidity: Double? = null,
-    val ipAddress: String? = null,
-    val deviceName: String? = null
-) : Request
+    val deviceName: String? = null,
+    val macAddress: String? = null,
+    ) : Request
 
 /**
  * Represents a request containing only temperature data.
@@ -54,6 +54,6 @@ data class HumidityRequest(
 data class TemperatureRequest(
     override val type: String = "TEMPERATURE",
     val temperature: Double? = null,
-    val ipAddress: String? = null,
-    val deviceName: String? = null
-) : Request
+    val deviceName: String? = null,
+    val macAddress: String? = null,
+    ) : Request

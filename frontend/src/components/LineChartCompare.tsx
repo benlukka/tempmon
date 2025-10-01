@@ -8,8 +8,11 @@ import {
     CartesianGrid,
     Tooltip,
     Legend,
-    ResponsiveContainer
+    ResponsiveContainer,
+    ReferenceLine
 } from "recharts"
+
+import dayjs from "dayjs"
 
 const { Text } = Typography
 
@@ -56,10 +59,11 @@ const LineChartCompare: React.FC<LineChartProps> = ({ data, devices, title, metr
         const dataByTimestamp = new Map<string, ProcessedData>()
         for (const item of data) {
             if (!item.timestamp) continue
-            if (!dataByTimestamp.has(item.timestamp)) {
-                dataByTimestamp.set(item.timestamp, { timestamp: item.timestamp })
+            const minuteTimestamp = dayjs(item.timestamp).format("YYYY-MM-DD HH:mm")
+            if (!dataByTimestamp.has(minuteTimestamp)) {
+                dataByTimestamp.set(minuteTimestamp, { timestamp: minuteTimestamp })
             }
-            const entry = dataByTimestamp.get(item.timestamp)!
+            const entry = dataByTimestamp.get(minuteTimestamp)!
             for (const metric of metrics) {
                 const dataKey = `${item.device}_${metric.key}`
                 if (item[metric.key] !== undefined && item[metric.key] !== null) {
@@ -86,18 +90,14 @@ const LineChartCompare: React.FC<LineChartProps> = ({ data, devices, title, metr
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                         dataKey="timestamp"
-                        tickFormatter={timestamp =>
-                            new Date(timestamp).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit"
-                            })
-                        }
+                        tickFormatter={timestamp => dayjs(timestamp).format("DD.MM.YYYY HH:mm")}
                         minTickGap={30}
                     />
                     <YAxis
                         yAxisId="left"
                         orientation="left"
                         stroke={metrics.find(m => m.key === "temperature")?.colors[0] || "#8884d8"}
+                        domain={[17, 'auto']}
                         tickFormatter={value =>
                             `${value.toFixed(1)} ${
                                 metrics.find(m => m.key === "temperature")?.unit || ""
@@ -117,6 +117,7 @@ const LineChartCompare: React.FC<LineChartProps> = ({ data, devices, title, metr
                         hide={!metrics.some(m => m.key === "humidity")}
                     />
                     <Tooltip
+                        labelFormatter={label => dayjs(label).format("DD.MM.YYYY HH:mm")}
                         formatter={(value: number, name: string, props) => {
                             const metricKey = props.dataKey!!.toString().split("_").pop()
                             const metric = metrics.find(m => m.key === metricKey)
@@ -125,6 +126,15 @@ const LineChartCompare: React.FC<LineChartProps> = ({ data, devices, title, metr
                         }}
                     />
                     <Legend />
+                    {metrics.some(m => m.key === "temperature") && (
+                        <ReferenceLine
+                            y={21}
+                            yAxisId="left"
+                            stroke="red"
+                            strokeDasharray="3 3"
+                            label="21°C"
+                        />
+                    )}
                     {devices.flatMap((device, deviceIndex) =>
                         metrics.map(metric => {
                             const dataKey = `${device}_${metric.key}`

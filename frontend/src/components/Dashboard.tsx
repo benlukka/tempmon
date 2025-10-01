@@ -1,15 +1,15 @@
 import React, { } from 'react';
 import RoomCompare from "./RoomCompare";
-import MeasurementTable from "./MeasurementTable";
 import CurrentTrend from "./CurrentTrend";
 import "../styles/Dashboard.css"
+import RoomsGrid from "./RoomsGrid";
 
 const Dashboard: React.FC = () => {
     return (
         <div className="dashboard">
             <CurrentTrend/>
             <RoomCompare/>
-            <MeasurementTable/>
+            <RoomsGrid/>
         </div>
     );
 };

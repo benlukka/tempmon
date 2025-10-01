@@ -18,6 +18,7 @@ import type {
   Device,
   Measurement,
   MeasurmentsWithCount,
+  OtaDevice,
   Room,
   TemperatureHumidityRequest,
 } from '../models';
@@ -28,6 +29,8 @@ import {
     MeasurementToJSON,
     MeasurmentsWithCountFromJSON,
     MeasurmentsWithCountToJSON,
+    OtaDeviceFromJSON,
+    OtaDeviceToJSON,
     RoomFromJSON,
     RoomToJSON,
     TemperatureHumidityRequestFromJSON,
@@ -133,6 +136,20 @@ export interface DefaultApiInterface {
      * Get all measurements by device
      */
     getAllMeasurementsForDevice(requestParameters: GetAllMeasurementsForDeviceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Measurement>>;
+
+    /**
+     * 
+     * @summary Get all OTA update capable devices
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getAllOtaDevicesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<OtaDevice>>>;
+
+    /**
+     * Get all OTA update capable devices
+     */
+    getAllOtaDevices(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<OtaDevice>>;
 
     /**
      * Retrieves all rooms from the database, including their associated devices
@@ -369,6 +386,32 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getAllMeasurementsForDevice(requestParameters: GetAllMeasurementsForDeviceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Measurement>> {
         const response = await this.getAllMeasurementsForDeviceRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Get all OTA update capable devices
+     */
+    async getAllOtaDevicesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<OtaDevice>>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/otaDevices`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(OtaDeviceFromJSON));
+    }
+
+    /**
+     * Get all OTA update capable devices
+     */
+    async getAllOtaDevices(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<OtaDevice>> {
+        const response = await this.getAllOtaDevicesRaw(initOverrides);
         return await response.value();
     }
 
