@@ -3,9 +3,11 @@ import {Measurement, MeasurmentsWithCount} from "../generated";
 import {Card, Table} from 'antd';
 import type {TableProps, TablePaginationConfig} from 'antd';
 import { apiClient as api } from "../apiClient";
+import { useTranslation } from 'react-i18next';
 
 
 const MeasurementTable: React.FC = () => {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState<boolean>(false);
     const [data, setData] = useState<Measurement[]>([]);
     const [pagination, setPagination] = useState<TablePaginationConfig>({
@@ -44,17 +46,17 @@ const MeasurementTable: React.FC = () => {
 
     const columns: TableProps<Measurement>['columns'] = [
         {
-            title: 'Raum',
+            title: t('table_room'),
             dataIndex: 'deviceName',
             key: 'deviceName',
         },
         {
-            title: 'Zeitstempel',
+            title: t('table_timestamp'),
             dataIndex: 'timestamp',
             key: 'timestamp',
             render: (text: string) => {
                 const date = new Date(text);
-                return date.toLocaleString('de-DE', {
+                return date.toLocaleString(undefined, {
                     year: 'numeric',
                     month: '2-digit',
                     day: '2-digit',
@@ -64,21 +66,21 @@ const MeasurementTable: React.FC = () => {
             },
         },
         {
-            title: 'Temperatur',
+            title: t('table_temperature'),
             dataIndex: 'temperature',
             key: 'temperature',
             render: (temp: number) => {
-                const n = typeof temp === 'number' ? temp : Number(temp);
-                return Number.isFinite(n) ? `${n.toFixed(1)}°C` : 'N/A';
+                const n = temp;
+                return Number.isFinite(n) ? `${n.toFixed(1)}°C` : t('not_available_short');
             },
         },
         {
-            title: 'Luftfeuchtigkeit',
+            title: t('table_humidity'),
             dataIndex: 'humidity',
             key: 'humidity',
             render: (humidity: number) => {
-                const n = typeof humidity === 'number' ? humidity : Number(humidity);
-                return Number.isFinite(n) ? `${n.toFixed(1)}%` : 'N/A';
+                const n = humidity;
+                return Number.isFinite(n) ? `${n.toFixed(1)}%` : t('not_available_short');
             },
         }
     ];

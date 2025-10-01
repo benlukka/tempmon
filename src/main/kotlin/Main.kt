@@ -15,6 +15,7 @@ fun main() {
             e.printStackTrace()
         }
     }.start()
+    OtaDeviceDiscoveryService.start()
     Thread{
         try {
             println("Starting HTTP server...")

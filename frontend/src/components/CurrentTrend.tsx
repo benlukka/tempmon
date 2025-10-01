@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
 import { Card, Col, Row, Skeleton, Statistic, Typography } from 'antd';
-import { DefaultApi } from "../generated";
-import { Gauge } from '@mui/x-charts/Gauge';
 import { apiClient as api } from "../apiClient";
+import { useTranslation } from 'react-i18next';
 const { Text } = Typography;
 
 // --- Dynamic Date Calculation Helper Functions ---
@@ -49,10 +48,10 @@ const calculateDevelopment = (current: number | null, previous: number | null): 
 
         if (development > 0) {
             arrow = <ArrowUpOutlined />;
-            color = '#3f8600';
+            color = "Gray";
         } else if (development < 0) {
             arrow = <ArrowDownOutlined />;
-            color = '#cf1322';
+            color = "Gray";
         } else {
             arrow = null;
             color = 'rgba(0, 0, 0, 0.45)';
@@ -62,6 +61,7 @@ const calculateDevelopment = (current: number | null, previous: number | null): 
 };
 
 const CurrentTrend: React.FC = () => {
+    const { t } = useTranslation();
     // State for Temperature
     const [thisWeekTemp, setThisWeekTemp] = useState<number | null>(null);
     const [tempDevelopmentData, setTempDevelopmentData] = useState<DevelopmentResult>({ development: null, arrow: null, color: 'inherit' });
@@ -126,7 +126,7 @@ const CurrentTrend: React.FC = () => {
 
         } catch (err) {
             console.error("Failed to fetch environmental data:", err);
-            setError("Failed to load environmental data.");
+            setError(t('failed_to_load_environmental_data'));
         } finally {
             setIsLoading(false);
         }
@@ -136,7 +136,7 @@ const CurrentTrend: React.FC = () => {
     }, []);
 
     if (error) {
-        return <p style={{ color: 'red' }}>Error: {error}</p>;
+        return <p style={{ color: 'red' }}>{t('error_prefix')}{error}</p>;
     }
 
     // --- Temperature Card Display Values ---
@@ -150,22 +150,22 @@ const CurrentTrend: React.FC = () => {
         <Row gutter={16}>
             {/* Temperature Card */}
             <Col span={12}>
-                <Card variant="borderless" title="Temperatur Übersicht">
+                <Card variant="borderless" title={t('temperature_overview_title')}>
                     <Statistic
-                        title="Durschnittliche Temperatur Diese Woche"
+                        title={t('avg_temperature_this_week')}
                         value={displayCurrentTemp}
                         precision={1}
                         suffix="°C"
                     />
                     <div style={{ marginTop: 16 }}>
                         <Text type="secondary" style={{ fontSize: '14px' }}>
-                            Veränderung vs. Letzte Woche: {' '}
+                            {t('change_vs_last_week')}
                         </Text>
                         {isLoading ? (
                             <Skeleton.Input style={{ width: 100 }} active size="small" />
                         ) : (
                             <Text style={{ color: tempDevelopmentData.color, fontSize: '16px', fontWeight: 'bold' }}>
-                                {tempDevelopmentData.arrow} {displayTempDevelopment !== undefined ? `${displayTempDevelopment}%` : 'N/A'}
+                                {tempDevelopmentData.arrow} {displayTempDevelopment !== undefined ? `${displayTempDevelopment}%` : t('not_available_short') }
                             </Text>
                         )}
                     </div>
@@ -174,22 +174,22 @@ const CurrentTrend: React.FC = () => {
 
             {/* Humidity Card */}
             <Col span={12}>
-                <Card variant="borderless" title="Luftfeuchtigkeit Übersicht">
+                <Card variant="borderless" title={t('humidity_overview_title')}>
                     <Statistic
-                        title="Durschnittliche Luftfeuchtigkeit Diese Woche"
+                        title={t('avg_humidity_this_week')}
                         value={displayCurrentHumidity}
                         precision={1}
                         suffix="%"
                     />
                     <div style={{ marginTop: 16 }}>
                         <Text type="secondary" style={{ fontSize: '14px' }}>
-                            Veränderung vs. Letzte Woche: {' '}
+                            {t('change_vs_last_week')}
                         </Text>
                         {isLoading ? (
                             <Skeleton.Input style={{ width: 100 }} active size="small" />
                         ) : (
                             <Text style={{ color: humidityDevelopmentData.color, fontSize: '16px', fontWeight: 'bold' }}>
-                                {humidityDevelopmentData.arrow} {displayHumidityDevelopment !== undefined ? `${displayHumidityDevelopment}%` : 'N/A'}
+                                {humidityDevelopmentData.arrow} {displayHumidityDevelopment !== undefined ? `${displayHumidityDevelopment}%` : t('not_available_short') }
                             </Text>
                         )}
                     </div>

@@ -26,6 +26,7 @@ import dayjs, { Dayjs } from "dayjs"
 import { Room, Measurement } from "../generated"
 import LineChartCompare, { ChartMetric } from "./LineChartCompare"
 import { apiClient as api } from "../apiClient"
+import { useTranslation } from 'react-i18next'
 
 const { Title, Text } = Typography
 const { RangePicker } = DatePicker
@@ -47,6 +48,7 @@ interface HistoricData {
 }
 
 const RoomCompare = () => {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState<boolean>(false)
     const [latestLoading, setLatestLoading] = useState<boolean>(false)
     const [historicLoading, setHistoricLoading] = useState<boolean>(false)
@@ -91,7 +93,7 @@ const RoomCompare = () => {
             })
             .catch(err => {
                 console.error("Failed to load rooms", err)
-                message.error("Fehler beim Laden der Räume")
+                message.error(t('error_loading_rooms'))
             })
             .finally(() => {
                 setLoading(false)
@@ -126,7 +128,7 @@ const RoomCompare = () => {
 
     const fetchLatestMeasurements = async () => {
         if (!selectedRoomA || !selectedRoomB) {
-            message.warning("Bitte wähle zwei Räume zum Vergleichen aus")
+            message.warning(t('warning_select_two_rooms_to_compare'))
             return
         }
 
@@ -144,11 +146,11 @@ const RoomCompare = () => {
                 roomB: roomBMeasurement || null
             })
             if (!roomAMeasurement || !roomBMeasurement) {
-                message.warning("Keine aktuellen Messdaten für einen oder beide Räume gefunden")
+                message.warning(t('warning_no_latest_measurements'))
             }
         } catch (error) {
             console.error("Failed to fetch latest measurements", error)
-            message.error("Fehler beim Laden der aktuellen Messdaten")
+            message.error(t('error_loading_latest_measurements'))
         } finally {
             setLatestLoading(false)
         }
@@ -156,7 +158,7 @@ const RoomCompare = () => {
 
     const fetchHistoricData = async () => {
         if (!selectedRoomA || !selectedRoomB || !timeRange) {
-            message.warning("Bitte wähle zwei Räume und einen Zeitbereich aus")
+            message.warning(t('warning_select_two_rooms_and_timerange'))
             return
         }
 
@@ -171,11 +173,11 @@ const RoomCompare = () => {
                 roomB: historicMeasurementsB || []
             })
             if (historicMeasurementsA.length === 0 && historicMeasurementsB.length === 0) {
-                message.warning("Keine historischen Daten für beide Räume gefunden")
+                message.warning(t('warning_no_historic_data_both'))
             }
         } catch (error) {
             console.error("Failed to fetch historic measurements", error)
-            message.error("Fehler beim Laden der historischen Daten")
+            message.error(t('error_loading_historic_data'))
         } finally {
             setHistoricLoading(false)
         }
@@ -219,7 +221,7 @@ const RoomCompare = () => {
     if (showTemperature) {
         chartMetrics.push({
             key: "temperature",
-            name: "Temperatur",
+            name: t('temperature_label'),
             colors: ["#1890ff", "#00c49f"],
             unit: "°C"
         })
@@ -227,7 +229,7 @@ const RoomCompare = () => {
     if (showHumidity) {
         chartMetrics.push({
             key: "humidity",
-            name: "Luftfeuchtigkeit",
+            name: t('humidity_label'),
             colors: ["#ff7300", "#ffc658"],
             unit: "%"
         })
@@ -237,11 +239,11 @@ const RoomCompare = () => {
         <div>
             <Card className="dashboard-container">
                 <Space direction="vertical" size="large" style={{ width: "100%" }}>
-                    <Title level={3}>Raumvergleich</Title>
+                    <Title level={3}>{t('room_compare_title')}</Title>
                     <Space size="large" wrap>
                         <Select
                             showSearch
-                            placeholder="Raum A wählen"
+                            placeholder={t('select_room_a_placeholder')}
                             optionFilterProp="label"
                             onChange={onChangeSelectA}
                             loading={loading}
@@ -251,7 +253,7 @@ const RoomCompare = () => {
                         />
                         <Select
                             showSearch
-                            placeholder="Raum B wählen"
+                            placeholder={t('select_room_b_placeholder')}
                             optionFilterProp="label"
                             onChange={onChangeSelectB}
                             loading={loading}
@@ -265,7 +267,7 @@ const RoomCompare = () => {
                             loading={latestLoading}
                             disabled={!selectedRoomA || !selectedRoomB}
                         >
-                            Aktuelle Werte vergleichen
+                            {t('compare_latest_button')}
                         </Button>
                     </Space>
 
@@ -273,7 +275,7 @@ const RoomCompare = () => {
                         <div style={{ textAlign: "center", padding: "40px" }}>
                             <Spin size="large" />
                             <div style={{ marginTop: 16 }}>
-                                <Text>Lade aktuelle Messdaten...</Text>
+                                <Text>{t('loading_latest_data')}</Text>
                             </div>
                         </div>
                     )}
@@ -284,7 +286,7 @@ const RoomCompare = () => {
                                 <Col xs={24} sm={12} md={6}>
                                     <Card>
                                         <Statistic
-                                            title={`${selectedRoomA?.label} - Temperatur`}
+                                            title={`${selectedRoomA?.label} - ${t('temperature_label')}` }
                                             value={latestData.roomA.temperature || 0}
                                             precision={1}
                                             valueStyle={{ color: "#1890ff" }}
@@ -296,7 +298,7 @@ const RoomCompare = () => {
                                 <Col xs={24} sm={12} md={6}>
                                     <Card>
                                         <Statistic
-                                            title={`${selectedRoomB?.label} - Temperatur`}
+                                            title={`${selectedRoomB?.label} - ${t('temperature_label')}` }
                                             value={latestData.roomB.temperature || 0}
                                             precision={1}
                                             valueStyle={{ color: "#1890ff" }}
@@ -308,7 +310,7 @@ const RoomCompare = () => {
                                 <Col xs={24} sm={12} md={6}>
                                     <Card>
                                         <Statistic
-                                            title={`${selectedRoomA?.label} - Luftfeuchtigkeit`}
+                                            title={`${selectedRoomA?.label} - ${t('humidity_label')}` }
                                             value={latestData.roomA.humidity || 0}
                                             precision={1}
                                             valueStyle={{ color: "#52c41a" }}
@@ -320,7 +322,7 @@ const RoomCompare = () => {
                                 <Col xs={24} sm={12} md={6}>
                                     <Card>
                                         <Statistic
-                                            title={`${selectedRoomB?.label} - Luftfeuchtigkeit`}
+                                            title={`${selectedRoomB?.label} - ${t('humidity_label')}` }
                                             value={latestData.roomB.humidity || 0}
                                             precision={1}
                                             valueStyle={{ color: "#52c41a" }}
@@ -335,30 +337,30 @@ const RoomCompare = () => {
                                 <Col xs={24} sm={12}>
                                     <Card>
                                         <Statistic
-                                            title="Temperatur-Unterschied"
+                                            title={t('temperature_difference_title')}
                                             value={Math.abs(getTemperatureDifference())}
                                             precision={1}
-                                            valueStyle={{ color: getTemperatureDifference() >= 0 ? "#3f8600" : "#cf1322" }}
+                                            valueStyle={{ color: "gray" }}
                                             prefix={getTemperatureDifference() >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
                                             suffix="°C"
                                         />
                                         <Text type="secondary" style={{ fontSize: "12px" }}>
-                                            {getTemperatureDifference() >= 0 ? `${selectedRoomA?.label} ist wärmer/gleich` : `${selectedRoomB?.label} ist wärmer`}
+                                            {getTemperatureDifference() >= 0 ? t('room_is_warmer_or_equal', { room: String(selectedRoomA?.label || '') }) : t('room_is_warmer', { room: String(selectedRoomB?.label || '') })}
                                         </Text>
                                     </Card>
                                 </Col>
                                 <Col xs={24} sm={12}>
                                     <Card>
                                         <Statistic
-                                            title="Luftfeuchtigkeit-Unterschied"
+                                            title={t('humidity_difference_title')}
                                             value={Math.abs(getHumidityDifference())}
                                             precision={1}
-                                            valueStyle={{ color: getHumidityDifference() >= 0 ? "#3f8600" : "#cf1322" }}
+                                            valueStyle={{ color: "gray" }}
                                             prefix={getHumidityDifference() >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
                                             suffix="%"
                                         />
                                         <Text type="secondary" style={{ fontSize: "12px" }}>
-                                            {getHumidityDifference() >= 0 ? `${selectedRoomA?.label} ist feuchter/gleich` : `${selectedRoomB?.label} ist feuchter`}
+                                            {getHumidityDifference() >= 0 ? t('room_is_more_humid_or_equal', { room: String(selectedRoomA?.label || '') }) : t('room_is_more_humid', { room: String(selectedRoomB?.label || '') })}
                                         </Text>
                                     </Card>
                                 </Col>
@@ -367,7 +369,7 @@ const RoomCompare = () => {
                     )}
 
                     <Title level={4} style={{ marginTop: 40 }}>
-                        Historischer Vergleich
+                        {t('historic_compare_title')}
                     </Title>
                     <Space size="large" wrap>
                         <RangePicker
@@ -382,7 +384,7 @@ const RoomCompare = () => {
                             loading={historicLoading}
                             disabled={!selectedRoomA || !selectedRoomB || !timeRange}
                         >
-                            Historische Daten laden
+                            {t('load_historic_data_button')}
                         </Button>
                     </Space>
                     <Space size="large" wrap>
@@ -390,13 +392,13 @@ const RoomCompare = () => {
                             checked={showTemperature}
                             onChange={e => setShowTemperature(e.target.checked)}
                         >
-                            Temperatur anzeigen
+                            {t('show_temperature_label')}
                         </Checkbox>
                         <Checkbox
                             checked={showHumidity}
                             onChange={e => setShowHumidity(e.target.checked)}
                         >
-                            Luftfeuchtigkeit anzeigen
+                            {t('show_humidity_label')}
                         </Checkbox>
                     </Space>
 
@@ -404,7 +406,7 @@ const RoomCompare = () => {
                         <div style={{ textAlign: "center", padding: "40px" }}>
                             <Spin size="large" />
                             <div style={{ marginTop: 16 }}>
-                                <Text>Lade historische Daten...</Text>
+                                <Text>{t('loading_historic_data')}</Text>
                             </div>
                         </div>
                     )}
@@ -413,7 +415,7 @@ const RoomCompare = () => {
                         <LineChartCompare
                             data={allHistoricData}
                             devices={selectedDeviceNames}
-                            title="Historische Messdaten"
+                            title={t('historic_measurements_title')}
                             metrics={chartMetrics}
                         />
                     )}
@@ -421,7 +423,7 @@ const RoomCompare = () => {
                     {!historicLoading && allHistoricData.length === 0 && historicData.roomA.length > 0 && (
                         <div style={{ marginTop: 20 }}>
                             <Text type="secondary">
-                                Keine historischen Daten für diesen Zeitraum verfügbar. Versuche einen anderen Zeitraum.
+                                {t('no_historic_data_for_period')}
                             </Text>
                         </div>
                     )}
