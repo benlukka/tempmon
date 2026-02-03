@@ -19,10 +19,14 @@ object JooqProvider {
     private val PASSWORD = System.getenv()["POSTGRES_PASSWORD"] ?: "postgres"
     private val DB_NAME = System.getenv()["POSTGRES_DB"] ?: "TempMon"
 
+    private val initialized = java.util.concurrent.atomic.AtomicBoolean(false)
+
     /**
      * Initializes the TempMon database and creates the measurements table if they don't exist.
      */
     fun initializeDatabase() {
+        if (initialized.getAndSet(true)) return
+        println("Initializing TempMon database...")
         var connection: Connection? = null
         var statement: Statement? = null
 
@@ -163,7 +167,8 @@ object JooqProvider {
 
     data class Device(
         val macAddress: String,
-        val name: String
+        val name: String,
+        val lastSeen: LocalDateTime? = null
     )
 
     data class Room(
@@ -239,17 +244,71 @@ object JooqProvider {
 
     fun getAllDevices(limit: Int = 100, offset: Int = 0): List<Device> {
         return withDslContext { dsl ->
-            dsl.select(MEASUREMENTS.MAC_ADDRESS, MEASUREMENTS.DEVICE_NAME)
+            val rn = DSL.rowNumber()
+                .over(DSL.partitionBy(MEASUREMENTS.MAC_ADDRESS).orderBy(MEASUREMENTS.TIMESTAMP.desc()))
+                .`as`("rn")
+
+            val rankedMeasurements = dsl.select(
+                    MEASUREMENTS.MAC_ADDRESS,
+                    MEASUREMENTS.DEVICE_NAME,
+                    MEASUREMENTS.TIMESTAMP,
+                    rn
+                )
                 .from(MEASUREMENTS)
-                .groupBy(MEASUREMENTS.MAC_ADDRESS, MEASUREMENTS.DEVICE_NAME)
-                .orderBy(MEASUREMENTS.MAC_ADDRESS)
+                .asTable("ranked_measurements")
+
+            dsl.select(
+                    rankedMeasurements.field(MEASUREMENTS.MAC_ADDRESS),
+                    rankedMeasurements.field(MEASUREMENTS.DEVICE_NAME),
+                    rankedMeasurements.field(MEASUREMENTS.TIMESTAMP)
+                )
+                .from(rankedMeasurements)
+                .where(rankedMeasurements.field("rn", Int::class.java)!!.eq(1))
                 .limit(limit)
                 .offset(offset)
                 .fetch()
                 .map { record ->
                     Device(
                         macAddress = record.get(MEASUREMENTS.MAC_ADDRESS) ?: "",
-                        name = record.get(MEASUREMENTS.DEVICE_NAME) ?: ""
+                        name = record.get(MEASUREMENTS.DEVICE_NAME) ?: "",
+                        lastSeen = record.get(MEASUREMENTS.TIMESTAMP)
+                    )
+                }
+        }
+    }
+
+    fun getAllOfflineDevices(limit: Int = 100, offset: Int = 0): List<Device> {
+        return withDslContext { dsl ->
+            val rn = DSL.rowNumber()
+                .over(DSL.partitionBy(MEASUREMENTS.MAC_ADDRESS).orderBy(MEASUREMENTS.TIMESTAMP.desc()))
+                .`as`("rn")
+
+            val rankedMeasurements = dsl.select(
+                    MEASUREMENTS.MAC_ADDRESS,
+                    MEASUREMENTS.DEVICE_NAME,
+                    MEASUREMENTS.TIMESTAMP,
+                    rn
+                )
+                .from(MEASUREMENTS)
+                .asTable("ranked_measurements")
+
+            dsl.select(
+                    rankedMeasurements.field(MEASUREMENTS.MAC_ADDRESS),
+                    rankedMeasurements.field(MEASUREMENTS.DEVICE_NAME),
+                    rankedMeasurements.field(MEASUREMENTS.TIMESTAMP)
+                )
+                .from(rankedMeasurements)
+                .where(rankedMeasurements.field("rn", Int::class.java)!!.eq(1))
+                .and(rankedMeasurements.field(MEASUREMENTS.TIMESTAMP)!!.lt(LocalDateTime.now().minusHours(2)))
+                .orderBy(rankedMeasurements.field(MEASUREMENTS.TIMESTAMP)!!.asc())
+                .limit(limit)
+                .offset(offset)
+                .fetch()
+                .map { record ->
+                    Device(
+                        macAddress = record.get(MEASUREMENTS.MAC_ADDRESS) ?: "",
+                        name = record.get(MEASUREMENTS.DEVICE_NAME) ?: "",
+                        lastSeen = record.get(MEASUREMENTS.TIMESTAMP)
                     )
                 }
         }

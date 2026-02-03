@@ -6,7 +6,6 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import { useTranslation } from 'react-i18next';
 import {Measurement} from "../generated";
 import {apiClient} from "../apiClient";
-import FancyTrendGraph from "./FancyTrendGraph";
 
 dayjs.extend(relativeTime);
 
@@ -71,7 +70,6 @@ export default function RoomsGrid(){
                             className={"card-header-rooms"}
                         />
                         <CardContent>
-                            <FancyTrendGraph xAxis={timestamps} yAxis={temperatures} />
                             <Typography color="text.secondary">
                                 ({dayjs(m.timestamp).fromNow()})
                             </Typography>
