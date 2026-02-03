@@ -166,6 +166,25 @@ class RequestApplication {
                 .withCorsHeaders()
         }
     }
+    private val handleGetAllOfflineDevices: HttpHandler = { httpRequest ->
+        try {
+            val limit = httpRequest.query("limit")?.toIntOrNull() ?: 100
+            val offset = httpRequest.query("offset")?.toIntOrNull() ?: 0
+
+            val devices = jooqProvider.getAllOfflineDevices(limit, offset)
+
+            Response(OK)
+                .header("Content-Type", "application/json")
+                .body(Jackson.asFormatString(devices))
+                .withCorsHeaders()
+        } catch (e: Exception) {
+            Response(BAD_REQUEST)
+                .header("Content-Type", "text/plain")
+                .body("Error retrieving devices: ${e.message}")
+                .withCorsHeaders()
+        }
+    }
+
     private val formatter = DateTimeFormatter.ISO_DATE_TIME
 
     // Handler for getting measurements in a time range
@@ -310,7 +329,8 @@ class RequestApplication {
     private val devicesExample = listOf(
         JooqProvider.Device(
             macAddress = "00:11:22:33:44:55",
-            name = "Sensor1"
+            name = "Sensor1",
+            lastSeen = LocalDateTime.now().minusHours(3)
         )
     )
 
@@ -318,7 +338,11 @@ class RequestApplication {
         JooqProvider.Room(
             name = "11b",
             devices = listOf(
-                JooqProvider.Device(macAddress = "00:11:22:33:44:55", name = "11b Room Sensor")
+                JooqProvider.Device(
+                    macAddress = "00:11:22:33:44:55",
+                    name = "11b Room Sensor",
+                    lastSeen = LocalDateTime.now().minusMinutes(5)
+                )
             )
         )
     )
@@ -410,6 +434,14 @@ class RequestApplication {
         returning(BAD_REQUEST to "Error retrieving all rooms")
     } bindContract GET to handleGetRooms
 
+    private val offlineDevicesRoute = "/offlineDevices" meta {
+        summary = "Get all devices that went offline the last 3 Hours"
+        operationId = "getOfflineDevices"
+        returning(OK, devicesListBodyLens to devicesExample, "Successful response with all devices that went offline")
+        returning(BAD_REQUEST to "Error retrieving all all devices that went offline")
+    } bindContract GET to handleGetAllOfflineDevices
+
+
     private val requestRoute = "/request" meta {
         summary = "Submit measurement data"
         description = "Submit temperature and/or humidity data from a device"
@@ -444,6 +476,7 @@ class RequestApplication {
                 measurementsRoomRoute,
                 roomRoute,
                 otaDeviceRoutes,
+                offlineDevicesRoute
             )
         },
         "/appApi.json" bind GET to handleOpenApiSpec,

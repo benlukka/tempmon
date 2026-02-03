@@ -133,7 +133,7 @@ export default function BeautifulTemperatureChart() {
             /> */}
             <Box>
             {t('devices_heading')}
-                <List padding={2} sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 2 }}>
+                <List sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 2, p: 2 }}>
                 {otaDevices?.map(
                     (device) => (
                         <Card>
