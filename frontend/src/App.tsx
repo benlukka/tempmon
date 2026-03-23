@@ -1,11 +1,14 @@
 import React from 'react';
-import Dashboard from './components/Dashboard';
-import './styles/Dashboard.css';
+import './App.css';
+import {ApiContext, api_client} from "./apiClient";
+import Dashboard from "./components/Dashboard";
 
 function App() {
     return (
         <div className="App">
-            <Dashboard />
+            <ApiContext.Provider value={api_client}>
+                <Dashboard/>
+            </ApiContext.Provider>
         </div>
     );
 }

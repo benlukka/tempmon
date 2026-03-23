@@ -16,6 +16,7 @@ import org.http4k.contract.openapi.ApiInfo
 import org.http4k.contract.openapi.v3.ApiServer
 import org.http4k.contract.openapi.v3.OpenApi3
 import org.http4k.core.*
+import org.http4k.lens.BiDiBodyLens
 import org.http4k.lens.Query
 import org.http4k.lens.string
 import org.http4k.lens.int
@@ -23,7 +24,7 @@ import org.http4k.routing.*
  fun Response.withCorsHeaders(): Response {
     return this
         .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        .header("Access-Control-Allow-Methods", "GET, POST")
         .header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         .header("Access-Control-Allow-Credentials", "true")
 }
@@ -53,24 +54,6 @@ class RequestApplication {
                         deviceName = myRequest.deviceName
                     )
                     "Received TemperatureHumidityRequest: Temp=${myRequest.temperature}, Humidity=${myRequest.humidity}"
-                }
-                is HumidityRequest -> {
-                    jooqProvider.saveMeasurement(
-                        humidity = myRequest.humidity,
-                        ipAddress = ipAddress,
-                        macAddress = myRequest.macAddress,
-                        deviceName = myRequest.deviceName
-                    )
-                    "Received HumidityRequest: Humidity=${myRequest.humidity}"
-                }
-                is TemperatureRequest -> {
-                    jooqProvider.saveMeasurement(
-                        temperature = myRequest.temperature,
-                        ipAddress = ipAddress,
-                        macAddress = myRequest.macAddress,
-                        deviceName = myRequest.deviceName
-                    )
-                    "Received TemperatureRequest: Temp=${myRequest.temperature}"
                 }
                 else -> "Received an unknown type of Request: ${myRequest::class.simpleName}"
             }
@@ -150,10 +133,7 @@ class RequestApplication {
     }
     private val handleGetAllDevices: HttpHandler = { httpRequest ->
         try {
-            val limit = httpRequest.query("limit")?.toIntOrNull() ?: 100
-            val offset = httpRequest.query("offset")?.toIntOrNull() ?: 0
-
-            val devices = jooqProvider.getAllDevices(limit, offset)
+            val devices = jooqProvider.getAllDevices()
 
             Response(OK)
                 .header("Content-Type", "application/json")
@@ -168,10 +148,8 @@ class RequestApplication {
     }
     private val handleGetAllOfflineDevices: HttpHandler = { httpRequest ->
         try {
-            val limit = httpRequest.query("limit")?.toIntOrNull() ?: 100
-            val offset = httpRequest.query("offset")?.toIntOrNull() ?: 0
 
-            val devices = jooqProvider.getAllOfflineDevices(limit, offset)
+            val devices = jooqProvider.getAllOfflineDevices()
 
             Response(OK)
                 .header("Content-Type", "application/json")
@@ -489,4 +467,7 @@ class RequestApplication {
         "/robots.txt" bind static(Classpath("/web")),
 
         "/{path:.*}" bind GET to singlePageApp(Classpath("/web"))    )
+}
+object RequestBodyLenses {
+    val request: BiDiBodyLens<Request> = Body.auto<Request>().toLens()
 }
