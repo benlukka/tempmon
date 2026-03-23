@@ -312,13 +312,14 @@ object JooqProvider {
     }
 
     fun getAllRooms(): List<Room> {
+        val allDevices = getAllDevices()
         return withDslContext { dsl ->
             dsl.selectDistinct(MEASUREMENTS.DEVICE_NAME)
                 .from(MEASUREMENTS)
                 .fetch()
                 .map { record ->
                     val deviceName = record.get(MEASUREMENTS.DEVICE_NAME) ?: "Unknown Room"
-                    val devices = getAllDevices().filter { it.name == deviceName }
+                    val devices = allDevices.filter { it.name == deviceName }
                     Room(devices = devices, name = deviceName)
                 }
         }
