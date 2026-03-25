@@ -251,6 +251,20 @@ export interface DefaultApiInterface {
     getMeasurementsInTimeRange(requestParameters: GetMeasurementsInTimeRangeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Measurement>>;
 
     /**
+     * 
+     * @summary Get all devices that went offline the last 3 Hours
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getOfflineDevicesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<Device>>>;
+
+    /**
+     * Get all devices that went offline the last 3 Hours
+     */
+    getOfflineDevices(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Device>>;
+
+    /**
      * Submit temperature and/or humidity data from a device
      * @summary Submit measurement data
      * @param {TemperatureHumidityRequest} temperatureHumidityRequest 
@@ -624,6 +638,32 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getMeasurementsInTimeRange(requestParameters: GetMeasurementsInTimeRangeRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Measurement>> {
         const response = await this.getMeasurementsInTimeRangeRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Get all devices that went offline the last 3 Hours
+     */
+    async getOfflineDevicesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<Device>>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/offlineDevices`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(DeviceFromJSON));
+    }
+
+    /**
+     * Get all devices that went offline the last 3 Hours
+     */
+    async getOfflineDevices(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Device>> {
+        const response = await this.getOfflineDevicesRaw(initOverrides);
         return await response.value();
     }
 

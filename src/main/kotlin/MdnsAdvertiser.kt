@@ -35,66 +35,72 @@ fun getNetworkInterfaceAddress(): InetAddress? {
 
     return null
 }
-object MdnsAdvertiser: Thread() {
+object MdnsAdvertiser {
 
     /**
      * Gets the actual network interface IP address (not localhost)
      */
 
-    override fun start() {
-        try {
-            // Use the actual network interface instead of localhost
-            val addr = getNetworkInterfaceAddress()
-            if (addr == null) {
-                println("Error: Could not find suitable network interface for mDNS advertising")
-                return
-            }
-
-            println("Advertising mDNS service on: ${addr.hostAddress}")
-
-            val jmdns = JmDNS.create(addr)
-            val serviceType = "_http._tcp.local."
-            val serviceName = "TempMon"
-            val servicePort = port as Int
-
-            val txtRecord = mapOf(
-                "version" to "1.0",
-                "status" to "active"
-            )
-
-            // ServiceInfo-Objekt erstellen
-            val serviceInfo = ServiceInfo.create(
-                serviceType,
-                serviceName,
-                servicePort,
-                0,
-                0,
-                txtRecord
-            )
-
-            // Dienst veröffentlichen
-            jmdns.registerService(serviceInfo)
-
-            println("TempMon mDNS-Dienst auf Port $servicePort veröffentlicht (${addr.hostAddress})")
-
-            Runtime.getRuntime().addShutdownHook(Thread {
-                println("Beende TempMon-Dienst...")
-                try {
-                    jmdns.unregisterAllServices()
-                    jmdns.close()
-                } catch (e: Exception) {
-                    println("Error during shutdown: ${e.message}")
+    fun start() {
+        Thread {
+            try {
+                // Use the actual network interface instead of localhost
+                val addr = getNetworkInterfaceAddress()
+                if (addr == null) {
+                    println("Error: Could not find suitable network interface for mDNS advertising")
+                    return@Thread
                 }
-            })
 
-            while (!isInterrupted) {
-                sleep(10_000)
+                println("Advertising mDNS service on: ${addr.hostAddress}")
+
+                val jmdns = JmDNS.create(addr)
+                val serviceType = "_http._tcp.local."
+                val serviceName = "TempMon"
+                val servicePort = (System.getenv()["API_PORT"] ?: 9247).toString().toInt()
+
+                val txtRecord = mapOf(
+                    "version" to "1.0",
+                    "status" to "active"
+                )
+
+                // ServiceInfo-Objekt erstellen
+                val serviceInfo = ServiceInfo.create(
+                    serviceType,
+                    serviceName,
+                    servicePort,
+                    0,
+                    0,
+                    txtRecord
+                )
+
+                // Dienst veröffentlichen
+                jmdns.registerService(serviceInfo)
+
+                println("TempMon mDNS-Dienst auf Port $servicePort veröffentlicht (${addr.hostAddress})")
+
+                Runtime.getRuntime().addShutdownHook(Thread {
+                    println("Beende TempMon-Dienst...")
+                    try {
+                        jmdns.unregisterAllServices()
+                        jmdns.close()
+                    } catch (e: Exception) {
+                        println("Error during shutdown: ${e.message}")
+                    }
+                })
+
+                while (true) {
+                    try {
+                        Thread.sleep(10_000)
+                    } catch (e: InterruptedException) {
+                        break
+                    }
+                }
+
+            } catch (e: Exception) {
+                println("Error in MdnsAdvertiser: ${e.message}")
+                e.printStackTrace()
             }
-
-        } catch (e: Exception) {
-            println("Error in MdnsAdvertiser: ${e.message}")
-            e.printStackTrace()
-        }
+        }.start()
     }
 
 }

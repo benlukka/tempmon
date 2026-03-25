@@ -13,16 +13,41 @@ import java.time.LocalDateTime
  * with the username and password "postgres".
  */
 object JooqProvider {
-    private  val JDBC_URL = System.getenv()["POSTGRES_URL"] ?: "jdbc:postgresql://localhost:5432/"
-    private  val JDBC_URL_WITH_DB = System.getenv()["POSTGRES_URL_WITH_DB"] ?: "jdbc:postgresql://localhost:5432/TempMon"
+    private  val JDBC_URL = System.getenv()["POSTGRES_URL"] ?: "jdbc:postgresql://192.168.51.252:5432/"
+    private  val JDBC_URL_WITH_DB = System.getenv()["POSTGRES_URL_WITH_DB"] ?: "jdbc:postgresql://192.168.51.252:5432/TempMon"
     private val USERNAME = System.getenv()["POSTGRES_USER"] ?: "postgres"
     private val PASSWORD = System.getenv()["POSTGRES_PASSWORD"] ?: "postgres"
     private val DB_NAME = System.getenv()["POSTGRES_DB"] ?: "TempMon"
+
+    private val initialized = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    data class Measurement(
+        val id: Int,
+        val timestamp: LocalDateTime,
+        val temperature: Float?,
+        val humidity: Float?,
+        val ipAddress: String?,
+        val macAddress: String?,
+        val deviceName: String?
+    )
+
+    data class Device(
+        val macAddress: String,
+        val name: String,
+        val lastSeen: LocalDateTime? = null
+    )
+
+    data class Room(
+        val devices: List<Device>,
+        val name: String
+    )
 
     /**
      * Initializes the TempMon database and creates the measurements table if they don't exist.
      */
     fun initializeDatabase() {
+        if (initialized.getAndSet(true)) return
+        println("Initializing TempMon database...")
         var connection: Connection? = null
         var statement: Statement? = null
 
@@ -151,25 +176,6 @@ object JooqProvider {
     /**
      * Data class representing a measurement from the database
      */
-    data class Measurement(
-        val id: Int,
-        val timestamp: LocalDateTime,
-        val temperature: Float?,
-        val humidity: Float?,
-        val ipAddress: String?,
-        val macAddress: String?,
-        val deviceName: String?
-    )
-
-    data class Device(
-        val macAddress: String,
-        val name: String
-    )
-
-    data class Room(
-        val devices: List<Device>,
-        val name: String
-    )
 
     private fun Record.toMeasurement(): Measurement {
         return Measurement(
@@ -237,34 +243,83 @@ object JooqProvider {
         }
     }
 
-    fun getAllDevices(limit: Int = 100, offset: Int = 0): List<Device> {
+    fun getAllDevices(): List<Device> {
         return withDslContext { dsl ->
-            dsl.select(MEASUREMENTS.MAC_ADDRESS, MEASUREMENTS.DEVICE_NAME)
+            val rn = DSL.rowNumber()
+                .over(DSL.partitionBy(MEASUREMENTS.MAC_ADDRESS).orderBy(MEASUREMENTS.TIMESTAMP.desc()))
+                .`as`("rn")
+
+            val rankedMeasurements = dsl.select(
+                    MEASUREMENTS.MAC_ADDRESS,
+                    MEASUREMENTS.DEVICE_NAME,
+                    MEASUREMENTS.TIMESTAMP,
+                    rn
+                )
                 .from(MEASUREMENTS)
-                .groupBy(MEASUREMENTS.MAC_ADDRESS, MEASUREMENTS.DEVICE_NAME)
-                .orderBy(MEASUREMENTS.MAC_ADDRESS)
-                .limit(limit)
-                .offset(offset)
+                .asTable("ranked_measurements")
+
+            dsl.select(
+                    rankedMeasurements.field(MEASUREMENTS.MAC_ADDRESS),
+                    rankedMeasurements.field(MEASUREMENTS.DEVICE_NAME),
+                    rankedMeasurements.field(MEASUREMENTS.TIMESTAMP)
+                )
+                .from(rankedMeasurements)
+                .where(rankedMeasurements.field("rn", Int::class.java)!!.eq(1))
                 .fetch()
                 .map { record ->
                     Device(
                         macAddress = record.get(MEASUREMENTS.MAC_ADDRESS) ?: "",
-                        name = record.get(MEASUREMENTS.DEVICE_NAME) ?: ""
+                        name = record.get(MEASUREMENTS.DEVICE_NAME) ?: "",
+                        lastSeen = record.get(MEASUREMENTS.TIMESTAMP)
                     )
                 }
         }
     }
 
-    fun getAllRooms(limit: Int = 100, offset: Int = 0): List<Room> {
+    fun getAllOfflineDevices(): List<Device> {
+        return withDslContext { dsl ->
+            val rn = DSL.rowNumber()
+                .over(DSL.partitionBy(MEASUREMENTS.MAC_ADDRESS).orderBy(MEASUREMENTS.TIMESTAMP.desc()))
+                .`as`("rn")
+
+            val rankedMeasurements = dsl.select(
+                    MEASUREMENTS.MAC_ADDRESS,
+                    MEASUREMENTS.DEVICE_NAME,
+                    MEASUREMENTS.TIMESTAMP,
+                    rn
+                )
+                .from(MEASUREMENTS)
+                .asTable("ranked_measurements")
+
+            dsl.select(
+                    rankedMeasurements.field(MEASUREMENTS.MAC_ADDRESS),
+                    rankedMeasurements.field(MEASUREMENTS.DEVICE_NAME),
+                    rankedMeasurements.field(MEASUREMENTS.TIMESTAMP)
+                )
+                .from(rankedMeasurements)
+                .where(rankedMeasurements.field("rn", Int::class.java)!!.eq(1))
+                .and(rankedMeasurements.field(MEASUREMENTS.TIMESTAMP)!!.lt(LocalDateTime.now().minusHours(2)))
+                .orderBy(rankedMeasurements.field(MEASUREMENTS.TIMESTAMP)!!.asc())
+                .fetch()
+                .map { record ->
+                    Device(
+                        macAddress = record.get(MEASUREMENTS.MAC_ADDRESS) ?: "",
+                        name = record.get(MEASUREMENTS.DEVICE_NAME) ?: "",
+                        lastSeen = record.get(MEASUREMENTS.TIMESTAMP)
+                    )
+                }
+        }
+    }
+
+    fun getAllRooms(): List<Room> {
+        val allDevices = getAllDevices()
         return withDslContext { dsl ->
             dsl.selectDistinct(MEASUREMENTS.DEVICE_NAME)
                 .from(MEASUREMENTS)
-                .limit(limit)
-                .offset(offset)
                 .fetch()
                 .map { record ->
                     val deviceName = record.get(MEASUREMENTS.DEVICE_NAME) ?: "Unknown Room"
-                    val devices = getAllDevices().filter { it.name == deviceName }
+                    val devices = allDevices.filter { it.name == deviceName }
                     Room(devices = devices, name = deviceName)
                 }
         }
@@ -322,7 +377,7 @@ object JooqProvider {
                 .from(MEASUREMENTS)
                 .where(MEASUREMENTS.TIMESTAMP.ge(startTime))
                 .and(MEASUREMENTS.TIMESTAMP.le(endTime))
-                .orderBy(MEASUREMENTS.TIMESTAMP.asc())
+                .orderBy(MEASUREMENTS.TIMESTAMP.desc())
                 .fetch()
                 .let { records -> records.map { record -> record.toMeasurement()} }
         }

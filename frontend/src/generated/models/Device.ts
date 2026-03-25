@@ -31,6 +31,12 @@ export interface Device {
      * @memberof Device
      */
     name: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof Device
+     */
+    lastSeen?: string | null;
 }
 
 /**
@@ -56,6 +62,7 @@ export function DeviceFromJSONTyped(json: any, ignoreDiscriminator: boolean): De
         
         'macAddress': json['macAddress'],
         'name': json['name'],
+        'lastSeen': !exists(json, 'lastSeen') ? undefined : json['lastSeen'],
     };
 }
 
@@ -70,6 +77,7 @@ export function DeviceToJSON(value?: Device | null): any {
         
         'macAddress': value.macAddress,
         'name': value.name,
+        'lastSeen': value.lastSeen,
     };
 }
 

@@ -14,10 +14,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 @JsonSubTypes(
     // Map the "TEMPERATURE_HUMIDITY" type name to TemperatureHumidityRequest class
     JsonSubTypes.Type(value = TemperatureHumidityRequest::class, name = "TEMPERATURE_HUMIDITY"),
-    // Map the "HUMIDITY" type name to HumidityRequest class
-    JsonSubTypes.Type(value = HumidityRequest::class, name = "HUMIDITY"),
-    // Map the "TEMPERATURE" type name to TemperatureRequest class
-    JsonSubTypes.Type(value = TemperatureRequest::class, name = "TEMPERATURE")
 )
 interface Request {
     /**
@@ -34,26 +30,3 @@ data class TemperatureHumidityRequest(
     val macAddress: String? = null,
     val deviceName: String? = null
 ) : Request
-
-/**
- * Represents a request containing only humidity data.
- * Implements the [Request] interface and provides its specific 'type' discriminator.
- */
-data class HumidityRequest(
-    // The 'type' discriminator, matching the name defined in @JsonSubTypes for this class
-    override val type: String = "HUMIDITY",
-    val humidity: Double? = null,
-    val deviceName: String? = null,
-    val macAddress: String? = null,
-    ) : Request
-
-/**
- * Represents a request containing only temperature data.
- * Implements the [Request] interface and provides its specific 'type' discriminator.
- */
-data class TemperatureRequest(
-    override val type: String = "TEMPERATURE",
-    val temperature: Double? = null,
-    val deviceName: String? = null,
-    val macAddress: String? = null,
-    ) : Request
