@@ -6,9 +6,11 @@ TempMon ist eine Full-Stack-Anwendung zur nachhaltigen Temperaturüberwachung, e
 
 - Automatische Erkennung von Temperatursensoren im lokalen Netzwerk via mDNS (jmdns).
 - Speicherung aller Messdaten in einer PostgreSQL-Datenbank.
-- Bereitstellung einer **RESTful API** mit OpenAPI-Spezifikation (Swagger) unter `openapi.json`.
-- Möglichkeit zur einfachen Integration eines eigenen Frontends oder Clients durch automatische Generierung eines TypeScript-Fetch-Clients.
-- Docker-Compose-basiertes Setup für schnelle Installation und Start.
+- Bereitstellung einer **RESTful API** mit OpenAPI-Spezifikation unter `/appApi.json`.
+- Automatisch generierter TypeScript-Fetch-Client für das Frontend.
+- OTA-Firmware-Updates für ESP32-Geräte über WLAN (via `espota.py`).
+- mDNS-basierte Geräte-Discovery für automatisches Auffinden neuer Sensoren.
+- Mehrsprachige Benutzeroberfläche (i18next).
 
 ## Projektkontext
 
@@ -19,64 +21,93 @@ In diesem Projekt ging es darum, die Temperaturentwicklung in den Räumen der Sc
 ## Systemarchitektur
 
 ![Systemarchitektur](./images/application.svg)
-   
-- **Backend**: Kotlin, http4k, jOOQ, PostgreSQL, ShadowJar, OpenAPI-Generation
-- **Datenbank**: PostgreSQL
-- **Frontend**: React, OpenAPI-Client (TypeScript)
+
+### Tech-Stack
+
+| Schicht      | Technologien                                                        |
+| ------------ | ------------------------------------------------------------------- |
+| **Backend**  | Kotlin, http4k, jOOQ, Jetty, ShadowJar, OpenAPI-Generation         |
+| **Datenbank**| PostgreSQL                                                          |
+| **Frontend** | React 18, TypeScript, MUI, Ant Design, Recharts, react-router-dom  |
+| **Build**    | Gradle (Kotlin JVM, Node-Gradle-Plugin), Yarn                      |
+| **Geräte**   | ESP32 Sensoren, OTA-Updates via espota.py, mDNS-Discovery (jmdns)  |
 
 ---
 
 ## Voraussetzungen
 
-- Docker
-- Docker Compose
+- **JDK 21**
+- **Node.js 20** und **Yarn** (werden automatisch via Gradle heruntergeladen)
+- **PostgreSQL** Datenbank
 
 ---
 
-## Installation & Start (Docker Compose)
+## Installation & Start
 
 1. Repository klonen:
    ```bash
    git clone https://github.com/benlukka/tempmon.git
    cd tempmon
    ```
-2. Mit Docker Compose bauen und starten:
+
+2. PostgreSQL-Datenbank einrichten (Standard: `TempMon`, User/Passwort: `postgres`/`postgres`).
+
+3. Backend und Frontend bauen und starten:
    ```bash
-   docker-compose up --build -d
+   ./gradlew run
    ```
-3. Dienste:
-   - **Backend/API**: `http://localhost:9247`
-   - **Datenbank**: PostgreSQL auf Port `5432` (User/Passwort: `postgres`/`postgres`, DB: `TempMon`)
+   Das Frontend wird automatisch mit gebaut und als statische Ressource in das Backend eingebettet.
 
----
+4. Anwendung aufrufen: `http://localhost:9247`
 
-## OpenAPI-Spezifikation & API-Integration
-
-Die API-Routen und ihre Funktionalität sind in der Datei `openapi.json` dokumentiert:
-
-- **Einsehen**: `http://localhost:9247/openapi.json`
-- **Typisierte Clients**: Ein TypeScript-Fetch-Client wird automatisch basierend auf dieser Spezifikation erstellt.
-
-Beispiele für Endpunkte:
-
-- `GET /sensors` – Liste aller erkannten Sensoren
-- `GET /readings?sensorId={id}` – Messwerte eines Sensors abfragen
-- `POST /readings` – Neue Messung hinzufügen (intern)
-
-Für ein eigenes Frontend binden Sie den TypeScript-Client ein oder rufen die Endpunkte direkt über Ihre bevorzugte HTTP-Bibliothek auf.
-
----
-
-## Konfiguration
-
-Per Umgebungsvariablen in der `docker-compose.yml` anpassbar:
+### Umgebungsvariablen
 
 | Variable            | Standardwert | Beschreibung                      |
-| ------------------- |--------------| --------------------------------- |
+| ------------------- | ------------ | --------------------------------- |
 | `POSTGRES_USER`     | `postgres`   | Datenbank-Benutzer                |
 | `POSTGRES_PASSWORD` | `postgres`   | Datenbank-Passwort                |
-| `POSTGRES_DB`       | `TempMon`    | Name der Datenbank                |
 | `API_PORT`          | `9247`       | Port, auf dem das Backend lauscht |
+
+---
+
+## API-Endpunkte
+
+Die vollständige OpenAPI-Spezifikation ist unter `http://localhost:9247/appApi.json` verfügbar.
+
+| Methode | Pfad                          | Beschreibung                                    |
+| ------- | ----------------------------- | ----------------------------------------------- |
+| `POST`  | `/request`                    | Messdaten (Temperatur/Luftfeuchtigkeit) senden  |
+| `GET`   | `/measurements`               | Alle Messwerte (paginiert)                      |
+| `GET`   | `/measurements/device`        | Messwerte eines bestimmten Geräts               |
+| `GET`   | `/measurements/timerange`     | Messwerte in einem Zeitraum                     |
+| `GET`   | `/measurements/avgTemperature`| Durchschnittstemperatur in einem Zeitraum        |
+| `GET`   | `/measurements/avgHumidity`   | Durchschnittliche Luftfeuchtigkeit              |
+| `GET`   | `/measurements/latest`        | Letzte Messung pro Gerät                        |
+| `GET`   | `/devices`                    | Alle registrierten Geräte                       |
+| `GET`   | `/offlineDevices`             | Geräte, die in den letzten 3 Stunden offline waren |
+| `GET`   | `/rooms`                      | Alle Räume mit zugeordneten Geräten             |
+| `GET`   | `/rooms/measurements`         | Messwerte für einen bestimmten Raum             |
+
+---
+
+## Projektstruktur
+
+```
+├── src/main/kotlin/          # Backend-Quellcode (Kotlin)
+│   ├── Main.kt               # Einstiegspunkt, startet Server & mDNS
+│   ├── Server.kt             # HTTP-Routen & API-Konfiguration
+│   ├── JooqProvider.kt       # Datenbankzugriff via jOOQ
+│   ├── MdnsAdvertiser.kt     # mDNS-Service-Advertising
+│   └── OTAUpdateService.kt   # OTA-Updates & Geräte-Discovery
+├── src/main/resources/       # OpenAPI-Spezifikation
+├── frontend/                 # React-Frontend
+│   ├── src/
+│   │   ├── components/       # UI-Komponenten (Dashboard)
+│   │   └── generated/        # Auto-generierter TypeScript-API-Client
+│   └── package.json
+├── build.gradle              # Gradle-Build-Konfiguration
+└── espota.py                 # ESP32 OTA-Upload-Skript
+```
 
 ---
 
@@ -93,8 +124,6 @@ Per Umgebungsvariablen in der `docker-compose.yml` anpassbar:
    ```
 4. Push und Pull Request eröffnen
 
-Bitte achtet auf Code-Stil und ergänzt bei neuen Features am besten auch noch entsprechende Tests.
-
 ---
 
 ## Lizenz
@@ -108,4 +137,3 @@ Dieses Projekt steht unter der MIT License. Details siehe [LICENSE](./LICENSE).
 Projektleitung: Miguel Lopez (Bugenhagenschule Alsterdorf)
 
 Bei Fragen oder Feedback einfach ein Issue eröffnen oder Kontakt über GitHub aufnehmen.
-
